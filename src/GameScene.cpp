@@ -18,7 +18,7 @@ GameScene::GameScene(QObject *parent) : QObject(parent)
 {
     initSparks();
 
-    setOverlay("CUARZITO\n\nPRESS SPACE TO START");
+    setOverlay(attractOverlayText());
 }
 
 // ---------------------------------------------------------------------------
@@ -88,7 +88,9 @@ void GameScene::render(QPainter *painter)
     if (m_state != GameState::Attract)
         drawPlayer(painter);
 
+    drawBursts(painter);
     drawPopups(painter);
+    drawImpactFlash(painter);
     drawHUD(painter);
 }
 
@@ -350,6 +352,59 @@ void GameScene::drawPopups(QPainter *painter) const
     painter->restore();
 }
 
+void GameScene::drawBursts(QPainter *painter) const
+{
+    if (m_bursts.isEmpty())
+        return;
+
+    painter->save();
+    painter->setPen(Qt::NoPen);
+    for (const auto &particle : m_bursts) {
+        const int alpha = static_cast<int>(qBound(0.f, particle.life, 1.f) * 190.f);
+        QColor color = particle.color;
+        color.setAlpha(alpha);
+
+        QRadialGradient glow(particle.sx, particle.sy, particle.radius * 2.7f);
+        glow.setColorAt(0.0, color.lighter(150));
+        glow.setColorAt(0.45, color);
+        glow.setColorAt(1.0, QColor(0, 0, 0, 0));
+        painter->setBrush(glow);
+        painter->drawEllipse(QPointF(particle.sx, particle.sy),
+                             particle.radius * 2.7f,
+                             particle.radius * 2.7f);
+
+        color.setAlpha(qMin(alpha + 45, 230));
+        painter->setBrush(color);
+        painter->drawEllipse(QPointF(particle.sx, particle.sy),
+                             particle.radius,
+                             particle.radius);
+    }
+    painter->restore();
+}
+
+void GameScene::drawImpactFlash(QPainter *painter) const
+{
+    if (m_impactFlash <= 0.f)
+        return;
+
+    const float t = qBound(0.f, m_impactFlash, 1.f);
+    painter->save();
+    painter->setPen(Qt::NoPen);
+
+    QColor wash(110, 255, 210, static_cast<int>(t * 42.f));
+    painter->setBrush(wash);
+    painter->drawRect(QRectF(0, 0, SCENE_W, SCENE_H));
+
+    QRadialGradient shock(playerSX(), playerSY(), 170.f * (1.15f - t * 0.15f));
+    shock.setColorAt(0.00, QColor(120, 255, 180, static_cast<int>(t * 110.f)));
+    shock.setColorAt(0.25, QColor(60, 180, 230, static_cast<int>(t * 65.f)));
+    shock.setColorAt(1.00, QColor(0, 0, 0, 0));
+    painter->setBrush(shock);
+    painter->drawEllipse(QPointF(playerSX(), playerSY()), 190.f, 150.f);
+
+    painter->restore();
+}
+
 // ---------------------------------------------------------------------------
 // Game loop tick
 // ---------------------------------------------------------------------------
@@ -358,9 +413,21 @@ void GameScene::update(float dt)
 {
     if (m_revealTimer > 0.f)
         m_revealTimer = qMax(0.f, m_revealTimer - dt);
+    if (m_impactFlash > 0.f)
+        m_impactFlash = qMax(0.f, m_impactFlash - dt * 2.8f);
+
+    for (auto &burst : m_bursts) {
+        burst.sx += burst.vx * dt;
+        burst.sy += burst.vy * dt;
+        burst.vy += 80.f * dt;
+        burst.life -= dt * 2.2f;
+        burst.radius *= (1.f + dt * 1.8f);
+    }
+    m_bursts.removeIf([](const BurstParticle &p) { return p.life <= 0.f; });
 
     switch (m_state) {
     case GameState::Attract:  updateAttract(dt);  break;
+    case GameState::Countdown:updateCountdown(dt);break;
     case GameState::Playing:  updatePlaying(dt);  break;
     case GameState::GameOver: updateGameOver(dt); break;
     }
@@ -376,8 +443,28 @@ void GameScene::updateAttract(float dt)
     m_vpY = CY + std::sin(m_time * 0.13f + 1.0f) * 65.f;
 
     advanceSparks(dt, 0.6f);
+    setOverlay(attractOverlayText());
     if (m_input.isConfirmJustPressed())
+        startCountdown();
+}
+
+void GameScene::updateCountdown(float dt)
+{
+    m_countdownTimer -= dt;
+    m_time += dt;
+
+    m_vpX = CX + std::sin(m_time * 0.18f) * 70.f;
+    m_vpY = CY + std::sin(m_time * 0.13f + 1.0f) * 50.f;
+    advanceSparks(dt, 0.75f);
+
+    const int beat = static_cast<int>(std::ceil(m_countdownTimer));
+    if (beat > 0) {
+        setOverlay(QString::number(beat));
+    } else if (m_countdownTimer > -0.35f) {
+        setOverlay("GO");
+    } else {
         startGame();
+    }
 }
 
 void GameScene::updatePlaying(float dt)
@@ -438,6 +525,7 @@ void GameScene::updatePlaying(float dt)
             m_score += c.value;
             m_revealDuration = c.special ? 0.52f : 0.34f;
             m_revealTimer = m_revealDuration;
+            spawnBurst(px, py, c.special);
             m_popups.append({px, py, c.value, 1.0f});
             return true;
         }
@@ -472,7 +560,7 @@ void GameScene::updateGameOver(float dt)
     m_vpY = CY + std::sin(m_time * 0.13f + 1.0f) * 65.f;
     advanceSparks(dt, 0.3f);
     if (m_gameOverTimer <= 0.f && m_input.isConfirmJustPressed())
-        startGame();
+        startCountdown();
 }
 
 // ---------------------------------------------------------------------------
@@ -484,6 +572,7 @@ void GameScene::startGame()
     m_obstacles.clear();
     m_collectibles.clear();
     m_popups.clear();
+    m_bursts.clear();
     m_player = Player{};
 
     m_vpX  = CX;
@@ -497,12 +586,45 @@ void GameScene::startGame()
     m_collectInterval = 1.0f;
     m_survivalTime    = 0.f;
     m_score           = 0.f;
+    m_countdownTimer  = 0.f;
     m_revealTimer     = 0.f;
     m_revealDuration  = 0.f;
+    m_impactFlash     = 0.f;
+    m_scoreSubmitted  = false;
     m_state           = GameState::Playing;
 
     m_hudText.clear();
     m_overlayText.clear();
+}
+
+void GameScene::startCountdown()
+{
+    m_obstacles.clear();
+    m_collectibles.clear();
+    m_popups.clear();
+    m_bursts.clear();
+    m_player = Player{};
+
+    m_vpX  = CX;
+    m_vpY  = CY;
+    m_time = 0.f;
+
+    m_worldSpeed      = 220.f;
+    m_spawnTimer      = 1.5f;
+    m_spawnInterval   = 2.0f;
+    m_collectTimer    = 1.0f;
+    m_collectInterval = 1.0f;
+    m_survivalTime    = 0.f;
+    m_score           = 0.f;
+    m_countdownTimer  = 3.0f;
+    m_revealTimer     = 0.f;
+    m_revealDuration  = 0.f;
+    m_impactFlash     = 0.f;
+    m_scoreSubmitted  = false;
+    m_state           = GameState::Countdown;
+
+    m_hudText.clear();
+    setOverlay("3");
 }
 
 void GameScene::endGame()
@@ -511,10 +633,21 @@ void GameScene::endGame()
     m_gameOverTimer = 1.5f;
     m_revealDuration = 1.5f;
     m_revealTimer    = m_revealDuration;
+    m_impactFlash    = 1.f;
 
-    setOverlay(QString("GAME OVER\n\nScore: %1    Time: %2s\n\nPRESS SPACE TO RESTART")
-                   .arg(static_cast<int>(m_score))
-                   .arg(static_cast<int>(m_survivalTime)));
+    const int finalScore = static_cast<int>(m_score);
+    QString resultLine = "GAME OVER";
+    if (!m_scoreSubmitted && m_highScores.qualifies(finalScore)) {
+        m_highScores.addScore("QTZ", finalScore);
+        m_scoreSubmitted = true;
+        resultLine = "NEW HIGH SCORE";
+    }
+
+    setOverlay(QString("%1\n\nScore: %2    Time: %3s\n\n%4\n\nPRESS SPACE TO RESTART")
+                   .arg(resultLine)
+                   .arg(finalScore)
+                   .arg(static_cast<int>(m_survivalTime))
+                   .arg(m_highScores.formattedTopScores(5)));
     m_hudText.clear();
 }
 
@@ -543,9 +676,38 @@ void GameScene::spawnCollectible()
     m_collectibles.append(c);
 }
 
+void GameScene::spawnBurst(float sx, float sy, bool special)
+{
+    auto *rng = QRandomGenerator::global();
+    const int count = special ? 18 : 12;
+    const QColor base = special ? QColor(255, 160, 40) : QColor(75, 255, 120);
+
+    for (int i = 0; i < count; ++i) {
+        const float angle = static_cast<float>(rng->generateDouble() * 2.0 * M_PI);
+        const float speed = special
+            ? 70.f + static_cast<float>(rng->generateDouble()) * 150.f
+            : 55.f + static_cast<float>(rng->generateDouble()) * 115.f;
+        BurstParticle particle;
+        particle.sx = sx;
+        particle.sy = sy;
+        particle.vx = std::cos(angle) * speed;
+        particle.vy = std::sin(angle) * speed;
+        particle.radius = 2.2f + static_cast<float>(rng->generateDouble()) * (special ? 3.6f : 2.6f);
+        particle.life = 1.f;
+        particle.color = base.lighter(95 + static_cast<int>(rng->generateDouble() * 55.0));
+        m_bursts.append(particle);
+    }
+}
+
 void GameScene::setOverlay(const QString &text)
 {
     m_overlayText = text;
+}
+
+QString GameScene::attractOverlayText() const
+{
+    return QString("CUARZITO\n\nPRESS SPACE TO START\n\n%1")
+        .arg(m_highScores.formattedTopScores(5));
 }
 
 void GameScene::updateHUD()

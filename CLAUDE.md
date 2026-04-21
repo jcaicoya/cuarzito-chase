@@ -35,7 +35,7 @@ Implemented now:
 - `QOpenGLWidget` main game widget.
 - `QTimer` game loop in `GameWidget`.
 - `QPainter` drawing on the OpenGL widget.
-- Attract, Playing, and GameOver states.
+- Attract, Countdown, Playing, and GameOver states.
 - Keyboard input through `InputManager`.
 - Pseudo-3D projection using a moving vanishing point.
 - Four-direction movement inside tunnel bounds.
@@ -230,9 +230,11 @@ enum class GameState {
 };
 ```
 
-- Add countdown before play.
-- Add top-10 local high score persistence.
+- [x] Add countdown before play.
+- [x] Add top-10 local high score persistence.
+- [x] Show top scores in attract and game-over overlays.
 - Add 3-letter initials entry.
+- Restart from game over goes through countdown.
 - Return automatically to attract mode after score entry or timeout.
 
 ### Phase F - Input
@@ -244,8 +246,8 @@ enum class GameState {
 
 ### Phase G - Polish
 
-- Add impact flash.
-- Add crystal pickup particle burst.
+- [x] Add impact flash.
+- [x] Add crystal pickup particle burst.
 - Add start/collect/game-over sounds.
 - Add ambient loop.
 - Add fullscreen/event mode.

@@ -12,7 +12,7 @@ The repository currently contains a playable Qt prototype with an OpenGL-ready w
 - `GameScene : QObject` for game state, updates, projection, and draw helpers.
 - `QPainter` rendering on top of the OpenGL widget.
 - Fixed 1280x720 gameplay canvas.
-- Attract screen, playing state, and game-over state.
+- Attract screen, countdown state, playing state, and game-over state.
 - Keyboard input: arrows/WASD, Space/Enter, Escape.
 - Pseudo-3D projection using a moving vanishing point.
 - Four-direction player movement inside the tunnel.
@@ -173,11 +173,13 @@ src/
 
 ### 5. Complete Event Flow
 
-- Add `Countdown`.
+- [x] Add `Countdown`.
 - Improve attract mode.
-- Add top-10 local high scores in JSON.
+- [x] Add top-10 local high scores in JSON.
+- [x] Show top scores in attract and game-over screens.
 - Add 3-letter initials entry.
-- Final flow: `Attract -> Countdown -> Playing -> GameOver -> HighScoreEntry -> Attract`.
+- Current flow: `Attract -> Countdown -> Playing -> GameOver -> Countdown`.
+- Target full flow: `Attract -> Countdown -> Playing -> GameOver -> HighScoreEntry -> Attract`.
 
 ### 6. Add Gamepad Support
 
@@ -188,8 +190,8 @@ src/
 
 ### 7. Polish for Live Use
 
-- Impact flash.
-- Crystal collection burst.
+- [x] Impact flash.
+- [x] Crystal collection burst.
 - Start, collect, game-over, and high-score sounds.
 - Subtle ambient loop.
 - Fullscreen/event mode.

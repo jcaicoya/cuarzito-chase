@@ -1,13 +1,15 @@
 #pragma once
+#include <QColor>
 #include <QList>
 #include <QObject>
 #include <QPointF>
 #include <QString>
+#include "HighScoreManager.h"
 #include "InputManager.h"
 
 class QPainter;
 
-enum class GameState { Attract, Playing, GameOver };
+enum class GameState { Attract, Countdown, Playing, GameOver };
 
 class GameScene : public QObject {
     Q_OBJECT
@@ -65,6 +67,14 @@ private:
         float life;
     };
 
+    struct BurstParticle {
+        float sx, sy;
+        float vx, vy;
+        float radius;
+        float life;
+        QColor color;
+    };
+
     struct Spark {
         float wx, wy, wz;
         float speed;
@@ -86,18 +96,22 @@ private:
     // Game flow
     // ---------------------------------------------------------------
     void startGame();
+    void startCountdown();
     void endGame();
     void spawnObstacle();
     void spawnCollectible();
+    void spawnBurst(float sx, float sy, bool special);
     void initSparks();
     void advanceSparks(float dt, float speedMult = 1.f);
     void updateVP(float dt);
 
     void updateAttract(float dt);
+    void updateCountdown(float dt);
     void updatePlaying(float dt);
     void updateGameOver(float dt);
     void updateHUD();
     void setOverlay(const QString &text);
+    QString attractOverlayText() const;
 
     // ---------------------------------------------------------------
     // Rendering passes
@@ -107,19 +121,23 @@ private:
     void drawObstacles(QPainter *p) const;
     void drawPlayer(QPainter *p) const;
     void drawVisorReveal(QPainter *p, float cx, float cy, float width, float height, float amount) const;
+    void drawBursts(QPainter *p) const;
     void drawPopups(QPainter *p) const;
     void drawHUD(QPainter *p) const;
+    void drawImpactFlash(QPainter *p) const;
 
     // ---------------------------------------------------------------
     // State
     // ---------------------------------------------------------------
     GameState    m_state = GameState::Attract;
     InputManager m_input;
+    HighScoreManager m_highScores;
     Player       m_player;
 
     QList<Obstacle>    m_obstacles;
     QList<Collectible> m_collectibles;
     QList<ScorePopup>  m_popups;
+    QList<BurstParticle> m_bursts;
     QList<Spark>       m_sparks;
 
     // Vanishing point (moves as the tunnel curves)
@@ -135,8 +153,11 @@ private:
     float m_survivalTime    = 0.f;
     float m_score           = 0.f;
     float m_gameOverTimer   = 0.f;
+    float m_countdownTimer  = 0.f;
     float m_revealTimer     = 0.f;
     float m_revealDuration  = 0.f;
+    float m_impactFlash     = 0.f;
+    bool  m_scoreSubmitted  = false;
 
     QString m_hudText;
     QString m_overlayText;
