@@ -14,6 +14,10 @@ public:
     bool isMovingRight() const;
     bool isMovingUp()    const;
     bool isMovingDown()  const;
+    bool isLeftJustPressed() const;
+    bool isRightJustPressed() const;
+    bool isUpJustPressed() const;
+    bool isDownJustPressed() const;
     bool isConfirmJustPressed() const;
 
     void endFrame();
@@ -21,4 +25,8 @@ public:
 private:
     QSet<Qt::Key> m_held;
     bool m_confirmPressed = false;
+    bool m_leftPressed = false;
+    bool m_rightPressed = false;
+    bool m_upPressed = false;
+    bool m_downPressed = false;
 };

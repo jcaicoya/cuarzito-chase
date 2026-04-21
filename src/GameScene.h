@@ -9,7 +9,7 @@
 
 class QPainter;
 
-enum class GameState { Attract, Countdown, Playing, GameOver };
+enum class GameState { Attract, Countdown, Playing, GameOver, HighScoreEntry };
 
 class GameScene : public QObject {
     Q_OBJECT
@@ -97,6 +97,7 @@ private:
     // ---------------------------------------------------------------
     void startGame();
     void startCountdown();
+    void startHighScoreEntry(int score);
     void endGame();
     void spawnObstacle();
     void spawnCollectible();
@@ -109,9 +110,11 @@ private:
     void updateCountdown(float dt);
     void updatePlaying(float dt);
     void updateGameOver(float dt);
+    void updateHighScoreEntry(float dt);
     void updateHUD();
     void setOverlay(const QString &text);
     QString attractOverlayText() const;
+    QString initialsEntryText() const;
 
     // ---------------------------------------------------------------
     // Rendering passes
@@ -158,6 +161,9 @@ private:
     float m_revealDuration  = 0.f;
     float m_impactFlash     = 0.f;
     bool  m_scoreSubmitted  = false;
+    int   m_pendingScore    = 0;
+    int   m_initialIndex    = 0;
+    QString m_initials      = "AAA";
 
     QString m_hudText;
     QString m_overlayText;

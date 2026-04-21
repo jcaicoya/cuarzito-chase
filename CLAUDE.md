@@ -233,7 +233,7 @@ enum class GameState {
 - [x] Add countdown before play.
 - [x] Add top-10 local high score persistence.
 - [x] Show top scores in attract and game-over overlays.
-- Add 3-letter initials entry.
+- [x] Add 3-letter initials entry.
 - Restart from game over goes through countdown.
 - Return automatically to attract mode after score entry or timeout.
 

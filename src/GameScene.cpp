@@ -430,6 +430,7 @@ void GameScene::update(float dt)
     case GameState::Countdown:updateCountdown(dt);break;
     case GameState::Playing:  updatePlaying(dt);  break;
     case GameState::GameOver: updateGameOver(dt); break;
+    case GameState::HighScoreEntry:updateHighScoreEntry(dt);break;
     }
 
     m_input.endFrame();
@@ -563,6 +564,41 @@ void GameScene::updateGameOver(float dt)
         startCountdown();
 }
 
+void GameScene::updateHighScoreEntry(float dt)
+{
+    m_time += dt;
+    m_vpX = CX + std::sin(m_time * 0.18f) * 70.f;
+    m_vpY = CY + std::sin(m_time * 0.13f + 1.0f) * 50.f;
+    advanceSparks(dt, 0.45f);
+
+    if (m_input.isLeftJustPressed())
+        m_initialIndex = qMax(0, m_initialIndex - 1);
+    if (m_input.isRightJustPressed())
+        m_initialIndex = qMin(2, m_initialIndex + 1);
+
+    if (m_input.isUpJustPressed() || m_input.isDownJustPressed()) {
+        const int dir = m_input.isUpJustPressed() ? 1 : -1;
+        QChar ch = m_initials[m_initialIndex];
+        int offset = ch.unicode() - QChar('A').unicode();
+        offset = (offset + dir + 26) % 26;
+        m_initials[m_initialIndex] = QChar(QChar('A').unicode() + offset);
+    }
+
+    if (m_input.isConfirmJustPressed()) {
+        if (m_initialIndex < 2) {
+            ++m_initialIndex;
+        } else {
+            m_highScores.addScore(m_initials, m_pendingScore);
+            m_scoreSubmitted = true;
+            m_pendingScore = 0;
+            startCountdown();
+            return;
+        }
+    }
+
+    setOverlay(initialsEntryText());
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -591,6 +627,8 @@ void GameScene::startGame()
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
     m_scoreSubmitted  = false;
+    m_pendingScore    = 0;
+    m_initialIndex    = 0;
     m_state           = GameState::Playing;
 
     m_hudText.clear();
@@ -621,6 +659,8 @@ void GameScene::startCountdown()
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
     m_scoreSubmitted  = false;
+    m_pendingScore    = 0;
+    m_initialIndex    = 0;
     m_state           = GameState::Countdown;
 
     m_hudText.clear();
@@ -636,19 +676,29 @@ void GameScene::endGame()
     m_impactFlash    = 1.f;
 
     const int finalScore = static_cast<int>(m_score);
-    QString resultLine = "GAME OVER";
     if (!m_scoreSubmitted && m_highScores.qualifies(finalScore)) {
-        m_highScores.addScore("QTZ", finalScore);
-        m_scoreSubmitted = true;
-        resultLine = "NEW HIGH SCORE";
+        startHighScoreEntry(finalScore);
+        return;
     }
 
-    setOverlay(QString("%1\n\nScore: %2    Time: %3s\n\n%4\n\nPRESS SPACE TO RESTART")
-                   .arg(resultLine)
+    setOverlay(QString("GAME OVER\n\nScore: %1    Time: %2s\n\n%3\n\nPRESS SPACE TO RESTART")
                    .arg(finalScore)
                    .arg(static_cast<int>(m_survivalTime))
                    .arg(m_highScores.formattedTopScores(5)));
     m_hudText.clear();
+}
+
+void GameScene::startHighScoreEntry(int score)
+{
+    m_state = GameState::HighScoreEntry;
+    m_gameOverTimer = 0.f;
+    m_revealDuration = 1.2f;
+    m_revealTimer = m_revealDuration;
+    m_pendingScore = score;
+    m_initialIndex = 0;
+    m_initials = "AAA";
+    m_hudText.clear();
+    setOverlay(initialsEntryText());
 }
 
 void GameScene::spawnObstacle()
@@ -708,6 +758,21 @@ QString GameScene::attractOverlayText() const
 {
     return QString("CUARZITO\n\nPRESS SPACE TO START\n\n%1")
         .arg(m_highScores.formattedTopScores(5));
+}
+
+QString GameScene::initialsEntryText() const
+{
+    QString initialsLine;
+    QString cursorLine;
+    for (int i = 0; i < 3; ++i) {
+        initialsLine += QString(" %1 ").arg(m_initials[i]);
+        cursorLine += (i == m_initialIndex) ? " ^ " : "   ";
+    }
+
+    return QString("NEW HIGH SCORE\n\nScore: %1\n\n%2\n%3\n\nUP/DOWN LETTER   LEFT/RIGHT SLOT\nSPACE CONFIRM")
+        .arg(m_pendingScore)
+        .arg(initialsLine)
+        .arg(cursorLine);
 }
 
 void GameScene::updateHUD()

@@ -177,8 +177,8 @@ src/
 - Improve attract mode.
 - [x] Add top-10 local high scores in JSON.
 - [x] Show top scores in attract and game-over screens.
-- Add 3-letter initials entry.
-- Current flow: `Attract -> Countdown -> Playing -> GameOver -> Countdown`.
+- [x] Add 3-letter initials entry.
+- Current flow: `Attract -> Countdown -> Playing -> GameOver -> HighScoreEntry -> Countdown`.
 - Target full flow: `Attract -> Countdown -> Playing -> GameOver -> HighScoreEntry -> Attract`.
 
 ### 6. Add Gamepad Support
