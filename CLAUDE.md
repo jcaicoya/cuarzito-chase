@@ -42,8 +42,8 @@ Implemented now:
 - Keyboard, XInput, and optional SDL2 controller input through `InputManager`.
 - Pseudo-3D projection using a moving vanishing point.
 - Four-direction movement inside tunnel bounds.
-- Obstacle and collectible spawning from the previous prototype.
-- Chase redesign in progress around world `z`, tunnel path samples, acceleration/braking, and four persistent target gems.
+- Four persistent chase gems.
+- Chase redesign in progress around world `z`, tunnel path samples, acceleration/braking, and timer-based target captures.
 - Scoring, HUD, score popups, sparks, stars.
 - Procedural placeholder Cuarzito.
 - Dedicated `CaveRenderer` with a QPainter-based faceted cave/space background.
@@ -167,8 +167,7 @@ GameWidget::paintGL()
   -> CaveRenderer::render(...)
   -> QPainter begin on GameWidget
        -> GameScene::drawSparks(...)
-       -> GameScene::drawCollectibles(...)
-       -> GameScene::drawObstacles(...)
+       -> GameScene::drawChaseGems(...)
        -> GameScene::drawPlayer(...)
        -> GameScene::drawHUD(...)
 ```
@@ -208,12 +207,11 @@ screenY = m_vpY + wy * FOCAL / wz;
 scale   = FOCAL / wz;
 ```
 
-Current important constants:
+Current important constants for projection and sparks:
 
 ```cpp
 SPAWN_Z   = 900;
 REMOVE_Z  = 25;
-COLLIDE_Z = 460;
 FOCAL     = 400;
 ```
 
@@ -228,12 +226,12 @@ The moving vanishing point is a core part of the game feel. Keep the speed cap s
 - [x] Add `TunnelPath.h/.cpp`.
 - [x] Sharpen the first tunnel path model and add a turn-occlusion signal for hiding the far opening.
 - [x] Add first player physics pass with `z`, speed, acceleration, brake, and local tunnel offset.
-- [ ] Remove old survival movement assumptions from remaining obstacle/collectible code.
+- [x] Remove old survival movement assumptions from remaining obstacle/collectible code.
 - [x] Replace random collectibles with four persistent gem targets.
 - [x] Add gem capture time extensions.
 - [x] Add wall/floor/ceiling speed penalties.
 - [x] Add win state.
-- [ ] Retune score around time remaining, captures, and clean flight.
+- [x] Retune score around time remaining, captures, wall contacts, and clean flight.
 
 ### Phase A - Baseline Verification
 

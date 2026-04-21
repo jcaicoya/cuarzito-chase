@@ -55,26 +55,6 @@ void GameScene::advanceSparks(float dt, float speedMult)
 }
 
 // ---------------------------------------------------------------------------
-// Vanishing point — drives the tunnel curve
-// ---------------------------------------------------------------------------
-
-void GameScene::updateVP(float dt)
-{
-    m_time += dt;
-    float curveMag = qMin(195.f, 75.f + m_survivalTime * 2.0f);
-
-    float targetVpX = CX + std::sin(m_time * 0.28f) * curveMag * 0.85f
-                         + std::sin(m_time * 0.11f) * curveMag * 0.38f;
-    float targetVpY = CY + std::sin(m_time * 0.20f + 1.2f) * curveMag * 0.62f
-                         + std::sin(m_time * 0.08f + 0.5f) * curveMag * 0.28f;
-
-    // VP moves toward target but capped so the player can always outrun the curve
-    float cap = PLAYER_SPEED * 0.62f * dt;
-    m_vpX += qBound(-cap, (targetVpX - m_vpX) * 2.8f * dt, cap);
-    m_vpY += qBound(-cap, (targetVpY - m_vpY) * 2.8f * dt, cap);
-}
-
-// ---------------------------------------------------------------------------
 // Rendering
 // ---------------------------------------------------------------------------
 
@@ -84,8 +64,6 @@ void GameScene::render(QPainter *painter)
 
     drawSparks(painter);
     drawChaseGems(painter);
-    drawCollectibles(painter);
-    drawObstacles(painter);
 
     if (m_state != GameState::Attract)
         drawPlayer(painter);
@@ -124,52 +102,6 @@ void GameScene::drawSparks(QPainter *painter) const
 
         painter->setPen(QPen(QColor(255, 145, 20, qMin(alpha, 255)), width));
         painter->drawLine(QPointF(px1, py1), QPointF(px2, py2));
-    }
-}
-
-void GameScene::drawObstacles(QPainter *painter) const
-{
-    QList<const Obstacle *> sorted;
-    sorted.reserve(m_obstacles.size());
-    for (const auto &o : m_obstacles) sorted.append(&o);
-    std::sort(sorted.begin(), sorted.end(),
-              [](const Obstacle *a, const Obstacle *b) { return a->wz > b->wz; });
-
-    for (const Obstacle *obs : sorted) {
-        float sc = projScale(obs->wz);
-        float px = projX(obs->wx, obs->wz);
-        float py = projY(obs->wy, obs->wz);
-        float hw = obs->wHalfW * sc;
-        float hh = obs->wHalfH * sc;
-
-        float t     = 1.f - obs->wz / SPAWN_Z;
-        int   alpha = static_cast<int>(35.f + t * 200.f);
-
-        QPainterPath gem;
-        gem.moveTo(px,      py - hh);
-        gem.lineTo(px + hw, py - hh * 0.05f);
-        gem.lineTo(px,      py + hh * 0.72f);
-        gem.lineTo(px - hw, py - hh * 0.05f);
-        gem.closeSubpath();
-
-        QLinearGradient facet(px - hw, py - hh, px + hw, py + hh * 0.72f);
-        facet.setColorAt(0.00, QColor(195, 210, 228, alpha));
-        facet.setColorAt(0.40, QColor(100, 115, 138, alpha));
-        facet.setColorAt(1.00, QColor( 32,  40,  55, alpha));
-
-        painter->setBrush(facet);
-        painter->setPen(QPen(QColor(80, 200, 220, qMin(alpha + 45, 255)), 1.4f));
-        painter->drawPath(gem);
-
-        QPainterPath hi;
-        hi.moveTo(px,            py - hh);
-        hi.lineTo(px + hw * 0.5f, py - hh * 0.45f);
-        hi.lineTo(px,            py - hh * 0.05f);
-        hi.lineTo(px - hw * 0.5f, py - hh * 0.45f);
-        hi.closeSubpath();
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(240, 248, 255, static_cast<int>(t * 55.f + 10.f)));
-        painter->drawPath(hi);
     }
 }
 
@@ -236,66 +168,6 @@ void GameScene::drawChaseGems(QPainter *painter) const
         painter->setPen(Qt::NoPen);
         painter->setBrush(QColor(255, 255, 255, alpha / 3));
         painter->drawEllipse(QPointF(px - r * 0.22f, py - r * 0.35f), r * 0.22f, r * 0.16f);
-    }
-}
-
-void GameScene::drawCollectibles(QPainter *painter) const
-{
-    QList<const Collectible *> sorted;
-    sorted.reserve(m_collectibles.size());
-    for (const auto &c : m_collectibles) sorted.append(&c);
-    std::sort(sorted.begin(), sorted.end(),
-              [](const Collectible *a, const Collectible *b) { return a->wz > b->wz; });
-
-    for (const Collectible *c : sorted) {
-        float sc = projScale(c->wz);
-        float px = projX(c->wx, c->wz);
-        float py = projY(c->wy, c->wz);
-        float r  = c->wRadius * sc;
-
-        float t     = 1.f - c->wz / SPAWN_Z;
-        int   alpha = static_cast<int>(30.f + t * 210.f);
-
-        QColor glowCol  = c->special ? QColor(255, 140,  20) : QColor( 40, 220,  80);
-        QColor coreCol  = c->special ? QColor(255, 170,  50, alpha) : QColor( 60, 230,  95, alpha);
-        QColor darkCol  = c->special ? QColor(160,  70,  10, alpha) : QColor( 10, 120,  40, alpha);
-        QColor lightCol = c->special ? QColor(255, 230, 140, alpha) : QColor(190, 255, 190, alpha);
-        QColor edgeCol  = c->special ? QColor(255, 200,  80, qMin(alpha + 60, 255))
-                                     : QColor( 80, 255, 120, qMin(alpha + 60, 255));
-
-        QRadialGradient glow(px, py, r * 2.2f);
-        glow.setColorAt(0.0, QColor(glowCol.red(), glowCol.green(), glowCol.blue(),
-                                    static_cast<int>(t * 65.f)));
-        glow.setColorAt(1.0, QColor(0, 0, 0, 0));
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(glow);
-        painter->drawEllipse(QPointF(px, py), r * 2.2f, r * 2.2f);
-
-        QPainterPath gem;
-        gem.moveTo(px,     py - r);
-        gem.lineTo(px + r, py);
-        gem.lineTo(px,     py + r * 0.72f);
-        gem.lineTo(px - r, py);
-        gem.closeSubpath();
-
-        QLinearGradient facet(px - r, py - r, px + r, py + r * 0.72f);
-        facet.setColorAt(0.0, lightCol);
-        facet.setColorAt(0.5, coreCol);
-        facet.setColorAt(1.0, darkCol);
-
-        painter->setBrush(facet);
-        painter->setPen(QPen(edgeCol, 1.2f));
-        painter->drawPath(gem);
-
-        QPainterPath hi;
-        hi.moveTo(px,            py - r);
-        hi.lineTo(px + r * 0.5f, py - r * 0.4f);
-        hi.lineTo(px,            py - r * 0.05f);
-        hi.lineTo(px - r * 0.5f, py - r * 0.4f);
-        hi.closeSubpath();
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(255, 255, 255, static_cast<int>(t * 60.f + 10.f)));
-        painter->drawPath(hi);
     }
 }
 
@@ -554,52 +426,6 @@ void GameScene::updatePlaying(float dt)
             gem.z += gem.speed * dt;
     }
 
-    // --- Advance obstacles ---
-    for (auto &obs : m_obstacles)
-        obs.wz -= m_worldSpeed * dt;
-    m_obstacles.removeIf([](const Obstacle &o) { return o.wz < REMOVE_Z; });
-
-    // --- Advance collectibles ---
-    for (auto &c : m_collectibles)
-        c.wz -= m_worldSpeed * dt;
-    m_collectibles.removeIf([](const Collectible &c) { return c.wz < REMOVE_Z; });
-
-    // --- Obstacle collision ---
-    const float sx = playerSX(), sy = playerSY();
-    for (const auto &obs : m_obstacles) {
-        if (obs.wz > COLLIDE_Z) continue;
-        float sc = projScale(obs.wz);
-        float px = projX(obs.wx, obs.wz);
-        float py = projY(obs.wy, obs.wz);
-        QRectF obsRect(px - obs.wHalfW * sc, py - obs.wHalfH * sc,
-                       obs.wHalfW * sc * 2.f, obs.wHalfH * sc * 2.f);
-        QRectF playerRect(sx - 15.f, sy - 15.f, 30.f, 30.f);
-        if (obsRect.intersects(playerRect)) {
-            endGame();
-            return;
-        }
-    }
-
-    // --- Collectible pickup ---
-    m_collectibles.removeIf([&](const Collectible &c) {
-        float sc = projScale(c.wz);
-        float px = projX(c.wx, c.wz);
-        float py = projY(c.wy, c.wz);
-        float pr = c.wRadius * sc;
-        float dx = px - sx, dy = py - sy;
-        float threshold = pr + 15.f * 1.8f;
-        if (dx * dx + dy * dy < threshold * threshold) {
-            m_score += c.value;
-            m_audio.play(c.special ? SoundCue::CollectSpecial : SoundCue::Collect);
-            m_revealDuration = c.special ? 0.52f : 0.34f;
-            m_revealTimer = m_revealDuration;
-            spawnBurst(px, py, c.special);
-            m_popups.append({px, py, c.value, 1.0f});
-            return true;
-        }
-        return false;
-    });
-
     for (int i = 0; i < m_chaseGems.size(); ++i) {
         ChaseGem &gem = m_chaseGems[i];
         if (gem.collected)
@@ -613,19 +439,20 @@ void GameScene::updatePlaying(float dt)
         if (ahead <= 34.f && ahead > -90.f && dx * dx + dy * dy <= catchRadius * catchRadius) {
             gem.collected = true;
             m_chaseTimer += 20.f;
-            m_score += gem.value + qMax(0.f, m_chaseTimer) * 18.f;
+            m_score += gem.value + qMax(0.f, m_chaseTimer) * 18.f + m_cleanFlightTime * 8.f;
             m_audio.play(SoundCue::CollectSpecial);
             m_revealDuration = 0.52f;
             m_revealTimer = m_revealDuration;
             spawnBurst(playerSX(), playerSY() - 22.f, true);
             m_popups.append({playerSX(), playerSY() - 42.f, gem.value, 1.0f});
+            m_cleanFlightTime += 3.f;
         }
     }
 
     const bool allGemsCollected = std::all_of(m_chaseGems.cbegin(), m_chaseGems.cend(),
                                              [](const ChaseGem &gem) { return gem.collected; });
     if (allGemsCollected) {
-        m_score += qMax(0.f, m_chaseTimer) * 75.f;
+        m_score += qMax(0.f, m_chaseTimer) * 75.f + m_cleanFlightTime * 45.f;
         m_runWon = true;
         endGame();
         return;
@@ -639,10 +466,14 @@ void GameScene::updatePlaying(float dt)
 
     // --- Score and difficulty ramp ---
     m_survivalTime   += dt;
-    m_score          += dt * qMax(1.f, m_player.speed / 180.f);
+    if (m_player.wallContact)
+        m_cleanFlightTime = 0.f;
+    else
+        m_cleanFlightTime += dt;
+
+    const float scoreRate = qMax(1.f, m_player.speed / 190.f) * (m_player.wallContact ? 0.25f : 1.f);
+    m_score += dt * scoreRate;
     m_worldSpeed      = m_player.speed;
-    m_spawnInterval   = qMax(0.45f, 2.0f  - m_survivalTime * 0.055f);
-    m_collectInterval = qMax(0.55f, 1.0f  - m_survivalTime * 0.008f);
 
     // --- Advance popups ---
     for (auto &pop : m_popups) pop.life -= dt * 1.6f;
@@ -677,12 +508,17 @@ void GameScene::updateChasePhysics(float dt)
     m_player.wallContact = wallDistance > 1.f;
 
     if (m_player.wallContact) {
+        if (!m_wasWallContact) {
+            ++m_wallHitCount;
+            m_score = qMax(0.f, m_score - 45.f);
+        }
         const float clampScale = 1.f / wallDistance;
         m_player.offX *= clampScale;
         m_player.offY *= clampScale;
         m_player.speed -= 260.f * dt;
         m_impactFlash = qMax(m_impactFlash, 0.18f);
     }
+    m_wasWallContact = m_player.wallContact;
 
     m_player.speed = qBound(CHASE_MIN_SPEED, m_player.speed, CHASE_MAX_SPEED);
     m_player.z += m_player.speed * dt;
@@ -759,8 +595,6 @@ void GameScene::updateHighScoreEntry(float dt)
 
 void GameScene::startGame()
 {
-    m_obstacles.clear();
-    m_collectibles.clear();
     resetChaseGems();
     m_popups.clear();
     m_bursts.clear();
@@ -770,22 +604,21 @@ void GameScene::startGame()
     m_vpY  = CY;
     m_time = 0.f;
 
-    m_worldSpeed      = 220.f;
-    m_spawnTimer      = 1.5f;
-    m_spawnInterval   = 2.0f;
-    m_collectTimer    = 1.0f;
-    m_collectInterval = 1.0f;
+    m_worldSpeed      = CHASE_BASE_SPEED;
     m_survivalTime    = 0.f;
     m_score           = 0.f;
     m_gameOverTimer   = 0.f;
     m_gameOverIdleTimer = 0.f;
     m_countdownTimer  = 0.f;
     m_chaseTimer      = 20.f;
+    m_cleanFlightTime = 0.f;
     m_revealTimer     = 0.f;
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
     m_scoreSubmitted  = false;
     m_runWon          = false;
+    m_wasWallContact  = false;
+    m_wallHitCount    = 0;
     m_pendingScore    = 0;
     m_initialIndex    = 0;
     m_state           = GameState::Playing;
@@ -796,8 +629,6 @@ void GameScene::startGame()
 
 void GameScene::startAttract()
 {
-    m_obstacles.clear();
-    m_collectibles.clear();
     m_chaseGems.clear();
     m_popups.clear();
     m_bursts.clear();
@@ -807,22 +638,21 @@ void GameScene::startAttract()
     m_vpY = CY;
     m_time = 0.f;
 
-    m_worldSpeed      = 220.f;
-    m_spawnTimer      = 1.5f;
-    m_spawnInterval   = 2.0f;
-    m_collectTimer    = 1.0f;
-    m_collectInterval = 1.0f;
+    m_worldSpeed      = CHASE_BASE_SPEED;
     m_survivalTime    = 0.f;
     m_score           = 0.f;
     m_gameOverTimer   = 0.f;
     m_gameOverIdleTimer = 0.f;
     m_countdownTimer  = 0.f;
     m_chaseTimer      = 20.f;
+    m_cleanFlightTime = 0.f;
     m_revealTimer     = 0.f;
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
     m_scoreSubmitted  = false;
     m_runWon          = false;
+    m_wasWallContact  = false;
+    m_wallHitCount    = 0;
     m_pendingScore    = 0;
     m_initialIndex    = 0;
     m_initials        = "AAA";
@@ -834,8 +664,6 @@ void GameScene::startAttract()
 
 void GameScene::startCountdown()
 {
-    m_obstacles.clear();
-    m_collectibles.clear();
     resetChaseGems();
     m_popups.clear();
     m_bursts.clear();
@@ -845,22 +673,21 @@ void GameScene::startCountdown()
     m_vpY  = CY;
     m_time = 0.f;
 
-    m_worldSpeed      = 220.f;
-    m_spawnTimer      = 1.5f;
-    m_spawnInterval   = 2.0f;
-    m_collectTimer    = 1.0f;
-    m_collectInterval = 1.0f;
+    m_worldSpeed      = CHASE_BASE_SPEED;
     m_survivalTime    = 0.f;
     m_score           = 0.f;
     m_gameOverTimer   = 0.f;
     m_gameOverIdleTimer = 0.f;
     m_countdownTimer  = 3.0f;
     m_chaseTimer      = 20.f;
+    m_cleanFlightTime = 0.f;
     m_revealTimer     = 0.f;
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
     m_scoreSubmitted  = false;
     m_runWon          = false;
+    m_wasWallContact  = false;
+    m_wallHitCount    = 0;
     m_pendingScore    = 0;
     m_initialIndex    = 0;
     m_state           = GameState::Countdown;
@@ -904,31 +731,6 @@ void GameScene::startHighScoreEntry(int score)
     m_initials = "AAA";
     m_hudText.clear();
     setOverlay(initialsEntryText());
-}
-
-void GameScene::spawnObstacle()
-{
-    auto *rng = QRandomGenerator::global();
-    Obstacle obs;
-    obs.wx     = (rng->generateDouble() * 2.0 - 1.0) * 200.f;
-    obs.wy     = (rng->generateDouble() * 2.0 - 1.0) * 150.f;
-    obs.wz     = SPAWN_Z;
-    obs.wHalfW = 28.f + rng->generateDouble() * 62.f;
-    obs.wHalfH = 18.f + rng->generateDouble() * 48.f;
-    m_obstacles.append(obs);
-}
-
-void GameScene::spawnCollectible()
-{
-    auto *rng = QRandomGenerator::global();
-    Collectible c;
-    c.wx     = (rng->generateDouble() * 2.0 - 1.0) * 185.f;
-    c.wy     = (rng->generateDouble() * 2.0 - 1.0) * 140.f;
-    c.wz     = SPAWN_Z;
-    c.wRadius = 14.f + rng->generateDouble() * 8.f;
-    c.special = rng->generateDouble() < 0.25;
-    c.value   = c.special ? 25 : 10;
-    m_collectibles.append(c);
 }
 
 void GameScene::resetChaseGems()
@@ -1000,7 +802,9 @@ void GameScene::updateHUD()
             .arg(collected)
             .arg(static_cast<int>(nextDistance), 4)
             .arg(static_cast<int>(m_player.speed), 3)
-            .arg(m_player.wallContact ? "  WALL" : "");
+            .arg(m_player.wallContact
+                 ? QString("  WALL %1").arg(m_wallHitCount)
+                 : QString("  CLEAN %1s").arg(static_cast<int>(m_cleanFlightTime)));
 }
 
 void GameScene::drawHUD(QPainter *painter) const

@@ -18,8 +18,8 @@ The repository currently contains a playable Qt prototype with an OpenGL-ready w
 - Keyboard input: arrows/WASD, Space/Enter, Escape.
 - Pseudo-3D projection using a moving vanishing point.
 - Four-direction player movement inside the tunnel.
-- Obstacle spawning, collectible spawning, scoring, popups, sparks, and basic HUD from the previous prototype.
-- First chase-game infrastructure is being added around a persistent tunnel path and world `z` positions.
+- Four persistent chase gems, score popups, sparks, and basic HUD.
+- Chase-game infrastructure around a persistent tunnel path and world `z` positions.
 - Procedural placeholder Cuarzito drawn with `QPainter`.
 - Dedicated `CaveRenderer` with a QPainter-based faceted cave/space background.
 
@@ -168,12 +168,12 @@ src/
 - [x] Add `TunnelPath` as the source of tunnel center/radius samples by `z`.
 - [x] Sharpen the first tunnel path model and add a turn-occlusion signal for hiding the far opening.
 - [x] Add first chase movement pass: `z`, speed, acceleration, braking, and local tunnel offset.
-- [ ] Remove old survival movement assumptions from remaining obstacle/collectible code.
+- [x] Remove old survival movement assumptions from remaining obstacle/collectible code.
 - [x] Replace random collectible spawning with four persistent flying gems.
 - [x] Add timer extensions per captured gem.
 - [x] Add wall/floor/ceiling speed penalties.
 - [x] Add win state for collecting all gems.
-- [ ] Retune scoring for time, clean flight, and gem captures.
+- [x] Retune scoring for time, clean flight, wall contacts, and gem captures.
 
 ### 1. Verify and Preserve the Prototype
 
