@@ -80,6 +80,7 @@ private:
     // Player absolute screen position (derived from VP + offset)
     float playerSX() const { return m_vpX + m_player.offX; }
     float playerSY() const { return m_vpY + m_player.offY; }
+    float playerLean() const;
 
     // ---------------------------------------------------------------
     // Game flow

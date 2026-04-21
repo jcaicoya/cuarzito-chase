@@ -51,7 +51,7 @@ Reference for the player character:
 - Blue electric aura.
 - Reads instantly at small sizes.
 
-The character should stay simple and iconic. The visor and silhouette matter more than fine detail.
+During normal gameplay, Cuarzito is mostly seen from behind, flying away from the camera. The green visor should not be visible as a full front-facing line in the default rear view. It can appear as a brief side glimpse while moving sideways, or in simple start, pickup, and game-over turn/spin animations. The character should stay simple and iconic; the rear silhouette and blue aura matter more than fine detail.
 
 ## Gameplay
 
@@ -166,7 +166,7 @@ src/
 
 - Improve the procedural character silhouette.
 - Make the hood and cloak closer to `cuarzito.png`.
-- Strengthen the neon green visor.
+- Keep the default pose rear-facing, with only side glimpses of the neon green visor.
 - Add blue electric aura and subtle idle bob.
 - Later option: use a transparent PNG sprite if the procedural version is not close enough.
 

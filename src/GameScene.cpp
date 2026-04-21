@@ -92,6 +92,13 @@ void GameScene::render(QPainter *painter)
     drawHUD(painter);
 }
 
+float GameScene::playerLean() const
+{
+    if (m_input.isMovingLeft() == m_input.isMovingRight())
+        return 0.f;
+    return m_input.isMovingLeft() ? -1.f : 1.f;
+}
+
 void GameScene::drawSparks(QPainter *painter) const
 {
     for (const auto &s : m_sparks) {
@@ -220,63 +227,76 @@ void GameScene::drawCollectibles(QPainter *painter) const
 void GameScene::drawPlayer(QPainter *painter) const
 {
     const float cx = playerSX();
-    const float cy = playerSY();
-    constexpr float W = 46.f, H = 58.f;
+    const float bob = std::sin(m_time * 7.5f) * 2.2f;
+    const float cy = playerSY() + bob;
+    const float lean = playerLean();
+    constexpr float W = 50.f, H = 62.f;
 
     // Blue electric aura
-    QRadialGradient aura(cx, cy + H * 0.05f, W * 1.1f);
-    aura.setColorAt(0.0, QColor( 0,  0,  0,   0));
-    aura.setColorAt(0.5, QColor( 0, 60, 200,  18));
-    aura.setColorAt(0.8, QColor( 0, 80, 220,  38));
-    aura.setColorAt(1.0, QColor( 0,  0,  0,   0));
+    QRadialGradient aura(cx - lean * 2.f, cy + H * 0.05f, W * 1.45f);
+    aura.setColorAt(0.0, QColor(  0,  30, 120,  16));
+    aura.setColorAt(0.45, QColor(  0,  85, 215,  45));
+    aura.setColorAt(0.72, QColor( 20, 175, 230,  34));
+    aura.setColorAt(1.0, QColor(  0,   0,   0,   0));
     painter->setPen(Qt::NoPen);
     painter->setBrush(aura);
-    painter->drawEllipse(QPointF(cx, cy + H * 0.05f), W * 1.1f, W * 0.9f);
+    painter->drawEllipse(QPointF(cx - lean * 2.f, cy + H * 0.05f), W * 1.45f, W * 1.05f);
 
-    // Dark hooded cloak
+    // Rear-view hooded cloak: Cuarzito is flying away from the camera.
     QPainterPath cloak;
-    cloak.moveTo(cx,             cy - H * 0.50f);
-    cloak.cubicTo(cx + W * 0.22f, cy - H * 0.44f,
-                  cx + W * 0.50f, cy - H * 0.22f,
-                  cx + W * 0.52f, cy + H * 0.08f);
-    cloak.cubicTo(cx + W * 0.56f, cy + H * 0.32f,
-                  cx + W * 0.42f, cy + H * 0.46f,
-                  cx,             cy + H * 0.50f);
-    cloak.cubicTo(cx - W * 0.42f, cy + H * 0.46f,
-                  cx - W * 0.56f, cy + H * 0.32f,
-                  cx - W * 0.52f, cy + H * 0.08f);
-    cloak.cubicTo(cx - W * 0.50f, cy - H * 0.22f,
-                  cx - W * 0.22f, cy - H * 0.44f,
-                  cx,             cy - H * 0.50f);
+    cloak.moveTo(cx + lean * 3.f, cy - H * 0.51f);
+    cloak.cubicTo(cx + W * 0.35f + lean * 5.f, cy - H * 0.47f,
+                  cx + W * 0.55f + lean * 6.f, cy - H * 0.22f,
+                  cx + W * 0.47f + lean * 5.f, cy + H * 0.08f);
+    cloak.cubicTo(cx + W * 0.55f + lean * 3.f, cy + H * 0.32f,
+                  cx + W * 0.38f,              cy + H * 0.48f,
+                  cx + lean * 3.f,             cy + H * 0.52f);
+    cloak.cubicTo(cx - W * 0.38f,              cy + H * 0.48f,
+                  cx - W * 0.55f + lean * 3.f, cy + H * 0.32f,
+                  cx - W * 0.47f + lean * 5.f, cy + H * 0.08f);
+    cloak.cubicTo(cx - W * 0.55f + lean * 6.f, cy - H * 0.22f,
+                  cx - W * 0.35f + lean * 5.f, cy - H * 0.47f,
+                  cx + lean * 3.f,             cy - H * 0.51f);
     cloak.closeSubpath();
 
-    QRadialGradient bodyGrad(cx, cy, W * 0.7f);
-    bodyGrad.setColorAt(0.0, QColor(28, 22, 40));
-    bodyGrad.setColorAt(1.0, QColor( 6,  4, 10));
+    QRadialGradient bodyGrad(cx - lean * 4.f, cy - H * 0.04f, W * 0.86f);
+    bodyGrad.setColorAt(0.0, QColor(24, 25, 34));
+    bodyGrad.setColorAt(0.45, QColor(10, 10, 18));
+    bodyGrad.setColorAt(1.0, QColor(3, 3, 8));
 
     painter->setBrush(bodyGrad);
-    painter->setPen(QPen(QColor(50, 40, 70, 180), 1.0f));
+    painter->setPen(QPen(QColor(42, 48, 68, 160), 1.0f));
     painter->drawPath(cloak);
 
-    // Neon green visor
-    float visorY  = cy - H * 0.12f;
-    float visorHW = W * 0.30f;
-    float visorH  = 3.8f;
+    QPainterPath hoodRidge;
+    hoodRidge.moveTo(cx - W * 0.27f + lean * 4.f, cy - H * 0.26f);
+    hoodRidge.cubicTo(cx - W * 0.12f + lean * 2.f, cy - H * 0.36f,
+                      cx + W * 0.12f + lean * 2.f, cy - H * 0.36f,
+                      cx + W * 0.27f + lean * 4.f, cy - H * 0.26f);
+    painter->setPen(QPen(QColor(64, 72, 96, 92), 1.3f));
+    painter->setBrush(Qt::NoBrush);
+    painter->drawPath(hoodRidge);
 
-    QLinearGradient visorGlow(cx - visorHW * 1.6f, visorY,
-                              cx + visorHW * 1.6f, visorY);
-    visorGlow.setColorAt(0.0, QColor( 0, 255,  80,   0));
-    visorGlow.setColorAt(0.3, QColor( 0, 255,  80,  70));
-    visorGlow.setColorAt(0.5, QColor(80, 255, 120, 100));
-    visorGlow.setColorAt(0.7, QColor( 0, 255,  80,  70));
-    visorGlow.setColorAt(1.0, QColor( 0, 255,  80,   0));
-    painter->setBrush(visorGlow);
-    painter->drawRoundedRect(
-        QRectF(cx - visorHW * 1.6f, visorY - 7.f, visorHW * 3.2f, 14.f), 7.f, 7.f);
+    if (std::abs(lean) > 0.01f) {
+        const float side = lean > 0.f ? 1.f : -1.f;
+        const float visorX = cx + side * W * 0.31f;
+        const float visorY = cy - H * 0.19f;
 
-    painter->setBrush(QColor(100, 255, 130, 255));
-    painter->drawRoundedRect(
-        QRectF(cx - visorHW, visorY - visorH * 0.5f, visorHW * 2.f, visorH), 2.f, 2.f);
+        QRadialGradient sideGlow(visorX, visorY, 15.f);
+        sideGlow.setColorAt(0.0, QColor(80, 255, 120, 125));
+        sideGlow.setColorAt(1.0, QColor(0, 0, 0, 0));
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(sideGlow);
+        painter->drawEllipse(QPointF(visorX, visorY), 15.f, 10.f);
+
+        painter->setBrush(QColor(100, 255, 130, 230));
+        painter->drawRoundedRect(QRectF(visorX - side * 2.f - (side > 0.f ? 2.f : 9.f),
+                                        visorY - 2.f,
+                                        11.f,
+                                        3.4f),
+                                 1.7f,
+                                 1.7f);
+    }
 }
 
 void GameScene::drawPopups(QPainter *painter) const

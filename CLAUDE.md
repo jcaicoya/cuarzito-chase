@@ -86,7 +86,7 @@ Player direction:
 - Blue electric aura.
 - No visual clutter.
 
-At game size, Cuarzito must read as: dark hood + green line + blue aura.
+During normal gameplay, Cuarzito is facing away from the camera. Do not draw the full green visor in the default rear-view pose. The visor may be shown only as a small side glimpse during lateral movement, or in explicit start, pickup, and game-over turn/spin animations. At game size, the default pose should read as: dark hooded back silhouette + blue aura.
 
 ## Design Rules
 
@@ -208,7 +208,9 @@ The moving vanishing point is a core part of the game feel. Keep the speed cap s
 
 - Improve the hood silhouette.
 - Make the body darker and simpler.
-- Make the visor sharper and brighter.
+- Make the default pose rear-facing; the full visor is not visible from behind.
+- Use only small side visor glimpses during lateral movement.
+- Reserve full visor reveals for start, pickup, and game-over turn/spin animations.
 - Improve blue aura.
 - Add subtle idle bob.
 - Keep the hitbox forgiving and independent from the visual size.
