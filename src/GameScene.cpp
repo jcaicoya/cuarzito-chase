@@ -31,7 +31,7 @@ void GameScene::render(QPainter *painter)
 
     drawChaseGems(painter);
 
-    if (m_state != GameState::Attract)
+    if (m_state != GameState::Attract && m_viewMode == ViewMode::ThirdPerson)
         drawPlayer(painter);
 
     drawBursts(painter);
@@ -40,6 +40,13 @@ void GameScene::render(QPainter *painter)
     if (m_state == GameState::Playing)
         drawMiniMap(painter);
     drawHUD(painter);
+}
+
+void GameScene::toggleViewMode()
+{
+    m_viewMode = (m_viewMode == ViewMode::ThirdPerson)
+        ? ViewMode::FirstPerson
+        : ViewMode::ThirdPerson;
 }
 
 QPointF GameScene::cameraShakeOffset() const
@@ -179,12 +186,14 @@ void GameScene::drawPlayer(QPainter *painter) const
     // Bob: gentle vertical float with a very slight lateral sway for life
     const float bobY  = std::sin(m_time * 6.8f) * 3.8f;
     const float bobX  = std::sin(m_time * 4.1f + 1.2f) * 1.4f;
-    const float cy    = playerSY() + bobY;
+    // Third-person: anchor Cuarzito in the lower portion of the screen so he
+    // reads as close to the camera. Vertical steering still tilts him slightly.
+    const float cy    = SCENE_H * 0.70f + m_player.offY * 0.35f + bobY;
     const float lean  = playerLean();
     const float reveal = m_revealDuration > 0.f
         ? qBound(0.f, m_revealTimer / m_revealDuration, 1.f)
         : 0.f;
-    constexpr float W = 68.f, H = 84.f;
+    constexpr float W = 92.f, H = 112.f;
 
     // -----------------------------------------------------------------------
     // Cloak — rear-view hooded figure flying away from camera.
@@ -363,15 +372,19 @@ void GameScene::drawImpactFlash(QPainter *painter) const
     painter->setBrush(wash);
     painter->drawRect(QRectF(0, 0, SCENE_W, SCENE_H));
 
-    // Large shockwave expanding from player
+    // In first-person there is no visible character — centre the shock on VP.
+    const float fsx = (m_viewMode == ViewMode::FirstPerson) ? m_vpX : playerSX();
+    const float fsy = (m_viewMode == ViewMode::FirstPerson) ? m_vpY : playerSY();
+
+    // Large shockwave expanding from impact point
     const float shockR = 220.f + (1.f - t) * 160.f;
-    QRadialGradient shock(playerSX(), playerSY(), shockR);
+    QRadialGradient shock(fsx, fsy, shockR);
     shock.setColorAt(0.00, QColor(140, 255, 190, static_cast<int>(t * 160.f)));
     shock.setColorAt(0.20, QColor(70, 200, 240, static_cast<int>(t * 100.f)));
     shock.setColorAt(0.55, QColor(20, 80, 130,  static_cast<int>(t *  40.f)));
     shock.setColorAt(1.00, QColor(0, 0, 0, 0));
     painter->setBrush(shock);
-    painter->drawEllipse(QPointF(playerSX(), playerSY()), shockR, shockR * 0.78f);
+    painter->drawEllipse(QPointF(fsx, fsy), shockR, shockR * 0.78f);
 
     painter->restore();
 }
@@ -616,8 +629,14 @@ void GameScene::updateChasePhysics(float dt)
     const QPointF currentCenter   = m_tunnelPath.sample(m_player.z).center;
     const QPointF lookAheadCenter = m_tunnelPath.sample(m_player.z + 360.f).center;
     const QPointF relDir = lookAheadCenter - currentCenter;
-    const float targetVpX = CX + relDir.x() * 1.05f;
-    const float targetVpY = CY + relDir.y() * 0.88f;
+    float targetVpX = CX + relDir.x() * 1.05f;
+    float targetVpY = CY + relDir.y() * 0.88f;
+    // First-person: lean the camera into the player's steering offset so the
+    // walls shift as if seen through Cuarzito's eyes.
+    if (m_viewMode == ViewMode::FirstPerson) {
+        targetVpX += m_player.offX * 0.42f;
+        targetVpY += m_player.offY * 0.42f;
+    }
     m_vpX += (targetVpX - m_vpX) * qMin(1.f, dt * 4.4f);
     m_vpY += (targetVpY - m_vpY) * qMin(1.f, dt * 4.4f);
 

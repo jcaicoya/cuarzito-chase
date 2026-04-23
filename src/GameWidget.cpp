@@ -88,6 +88,10 @@ void GameWidget::keyPressEvent(QKeyEvent *event)
         window()->close();
         return;
     }
+    if (event->key() == Qt::Key_V) {
+        m_scene->toggleViewMode();
+        return;
+    }
     if (event->key() == Qt::Key_F1) {
         const QString diag = m_scene->inputManager()->gamepadDiagnostics();
         qDebug().noquote() << diag;

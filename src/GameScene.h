@@ -32,6 +32,10 @@ public:
     void showDiagnostics(const QString &text);
     void restartRun();
 
+    enum class ViewMode { ThirdPerson, FirstPerson };
+    ViewMode viewMode() const { return m_viewMode; }
+    void toggleViewMode();
+
 private:
     // ---------------------------------------------------------------
     // Scene constants
@@ -180,5 +184,6 @@ private:
     QString m_overlayText;
     QString m_diagText;
     float   m_diagTimer = 0.f;
-    float   m_cameraShake = 0.f;
+    float    m_cameraShake = 0.f;
+    ViewMode m_viewMode    = ViewMode::ThirdPerson;
 };

@@ -50,6 +50,11 @@ Implemented now:
 - R restarts the current run immediately for testing.
 - Fullscreen uses cover scaling so ultrawide displays are filled instead of letterboxed.
 - Cuarzito's persistent aura is currently disabled for tunnel visibility.
+- Third-person / first-person view toggle with `V`. Third-person is default. First-person to be iterated later.
+- Speed-scaled crash feedback: impact flash, expanding shockwave, and camera shake all scale with player speed at time of wall contact.
+- Turn wall cue: outer wall of curves receives a subtle amber tint in `CaveRenderer` proportional to VP displacement.
+- Mini-map restored with teal border, safe-zone margins, and larger player dot.
+- Intro flow goes directly to `Playing` (no countdown after intro — intentional design decision).
 
 Important files:
 
@@ -121,6 +126,8 @@ Player direction:
 
 During normal gameplay, Cuarzito is facing away from the camera. Do not draw the full green visor in the default rear-view pose. The visor may be shown only as a small side glimpse during lateral movement, or in explicit start, pickup, and game-over turn/spin animations. At game size, the default pose should read as a dark hooded back silhouette without a persistent aura.
 
+In third-person mode (default), Cuarzito is anchored at 70% screen height (`SCENE_H * 0.70f`) and drawn at size `W=92, H=112` — larger and closer than before. In first-person mode (`V` to toggle), Cuarzito is not drawn and player steering shifts the VP directly.
+
 ## Chase Game Design
 
 Target loop:
@@ -183,11 +190,11 @@ The loader converts `angleDegrees / length` into curvature, then precomputes key
 
 **Editing the track:** change `resources/tracks/first_tunnel.json`. A future external visual editor should read/write the same table format. Loops are possible later by using large vertical angles over a segment.
 
-**Curve inertia constant:** `CURVE_INERTIA_K = 1.60f` in `GameScene.cpp`. Increase to make curves harder, decrease to make them more forgiving. The sign is intentionally opposite the path curvature: a left curve pushes Cuarzito toward the right/outside wall, and a right curve pushes him toward the left/outside wall.
+**Curve inertia constant:** `CURVE_INERTIA_K = 2.20f` in `GameScene.cpp`. Increase to make curves harder, decrease to make them more forgiving. The sign is intentionally opposite the path curvature: a left curve pushes Cuarzito toward the right/outside wall, and a right curve pushes him toward the left/outside wall.
 
-**Gem balance targets:** gems run at ~155 units/s, player base speed is 235. Relative catch-up speed = 80 units/s — clearly catchable on a straight, but curves and wall contacts make it challenging.
+**VP look-ahead:** `360` world units, multipliers `1.05x` horizontal / `0.88x` vertical. This makes upcoming turns visually apparent on the walls before the player enters them. Smoothing factor `4.4/s`.
 
-Current concern: this balance may let Cuarzito overtake gems too easily. Revisit gem speeds, starting distances, player speed cap, and braking requirements so chasing and spacing feel intentional.
+**Gem balance:** gems run at progressive speeds (178 / 182 / 186 / 190 units/s), starting at z = 380 / 680 / 1040 / 1460. Player base speed is 235, max speed capped at 440. Catch-up at base speed is 45–57 units/s — requires deliberate acceleration. Each collected gem adds 20 s to the chase timer.
 
 ## Design Rules
 
@@ -378,8 +385,8 @@ enum class GameState {
 - [x] Expose `curvatureH` and `curvatureV` in `TunnelPath::Sample`.
 - [x] Add centripetal force physics: curves push Cuarzito toward the outer wall proportional to speed².
 - [x] Load the first tunnel from a Qt resource JSON file instead of hardcoding track values.
-- [ ] Rebalance gem speeds and starting distances so gems are clearly catchable.
-- [ ] Add 3D mini-map (bottom-right HUD): shows tunnel path ahead, Cuarzito, and gem positions.
+- [x] Rebalance gem speeds and starting distances so gems are clearly catchable.
+- [x] Add 3D mini-map (bottom-right HUD): shows tunnel path ahead, Cuarzito, and gem positions.
 - [ ] Design and iterate on a first full track (~4000 world units, 8–10 segments).
 - [ ] Track editor (future): external visual tool that reads/writes the segment table.
 - [ ] Add loops and very sharp turns once the editor exists.
@@ -388,19 +395,15 @@ enum class GameState {
 
 Resume with the next gameplay and visual pass:
 
+- Iterate first-person mode (currently functional but not tuned): feel, gem visibility, HUD adaptation.
+- Make up/down movement obvious — vertical position in tunnel lacks clear visual feedback.
 - Improve what can be seen at the end of the tunnel without turning gameplay into open space.
-- Make turns much more visible on walls, ceiling, and floor.
-- Increase curve inertia/kinetic energy so high-speed turns strongly push Cuarzito toward the outside wall.
-- Add a clear feeling of acceleration and braking through visuals and audio.
-- Restore/fix the mini-map, which has disappeared or is hidden after recent fullscreen/render changes.
 - Build a GUI editor for the tunnel JSON format.
-- Rebalance speeds so Cuarzito cannot trivially overtake gems; he may need to brake or manage spacing.
 - Make Cuarzito exit into the stars/space when the game ends.
 - Add obstacles inside the tunnel.
 - Improve the tunnel appearance: richer facets, better depth, stronger cave identity.
-- Make crashes much more obvious.
-- Make up/down movement obvious.
 - Add proper sound and music beyond the current generated tones/ambient loop.
+- Design and iterate on a first full track (~4000 world units, 8–10 segments).
 
 Remaining from earlier phases:
 - Readability test at event screen (needs physical screen).
