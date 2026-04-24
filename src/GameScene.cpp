@@ -272,9 +272,13 @@ float GameScene::playerOffXNorm() const
 
 CaveRenderer::Mode GameScene::caveMode() const
 {
-    return m_state == GameState::Playing
-        ? CaveRenderer::Mode::EnclosedTunnel
-        : CaveRenderer::Mode::OpenMouth;
+    if (m_state == GameState::Playing || m_state == GameState::FailureCrash)
+        return CaveRenderer::Mode::EnclosedTunnel;
+    if (m_state == GameState::SuccessFlyout)
+        return m_endOpenTimer > 0.f
+            ? CaveRenderer::Mode::OpenMouth
+            : CaveRenderer::Mode::EnclosedTunnel;
+    return CaveRenderer::Mode::OpenMouth;
 }
 
 void GameScene::drawChaseGems(QPainter *painter) const
@@ -377,6 +381,46 @@ void GameScene::drawChaseGems(QPainter *painter) const
         painter->setPen(Qt::NoPen);
         painter->setBrush(QColor(255, 255, 255, alpha / 3));
         painter->drawEllipse(QPointF(px - r * 0.22f, py - r * 0.35f), r * 0.22f, r * 0.16f);
+    }
+
+    if (m_state == GameState::SuccessFlyout && m_endSequenceKind == EndSequenceKind::AllGemsCaptured) {
+        static const QPointF escortOffsets[4] = {
+            QPointF(-110.f, -42.f),
+            QPointF(110.f, -42.f),
+            QPointF(-72.f, 42.f),
+            QPointF(72.f, 42.f),
+        };
+
+        for (int i = 0; i < m_chaseGems.size() && i < 4; ++i) {
+            const ChaseGem &gem = m_chaseGems[i];
+            const QPointF escort = escortOffsets[i];
+            const float px = m_vpX + escort.x() + std::sin(m_time * 2.8f + i * 1.6f) * 10.f;
+            const float py = m_vpY + escort.y() + std::cos(m_time * 2.2f + i * 1.3f) * 8.f;
+            const float r = gem.radius * 0.65f;
+
+            QRadialGradient glow(px, py, r * 2.8f);
+            glow.setColorAt(0.0, QColor(gem.core.red(), gem.core.green(), gem.core.blue(), 130));
+            glow.setColorAt(1.0, QColor(0, 0, 0, 0));
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(glow);
+            painter->drawEllipse(QPointF(px, py), r * 2.8f, r * 2.8f);
+
+            QPainterPath body;
+            body.moveTo(px, py - r * 1.18f);
+            body.lineTo(px + r * 0.92f, py - r * 0.12f);
+            body.lineTo(px + r * 0.34f, py + r * 0.94f);
+            body.lineTo(px - r * 0.34f, py + r * 0.94f);
+            body.lineTo(px - r * 0.92f, py - r * 0.12f);
+            body.closeSubpath();
+
+            QLinearGradient facet(px - r, py - r, px + r, py + r);
+            facet.setColorAt(0.0, gem.core.lighter(175));
+            facet.setColorAt(0.45, gem.core);
+            facet.setColorAt(1.0, gem.core.darker(210));
+            painter->setBrush(facet);
+            painter->setPen(QPen(gem.edge, 1.2f));
+            painter->drawPath(body);
+        }
     }
 }
 
@@ -667,6 +711,8 @@ void GameScene::update(float dt)
     case GameState::Intro:    updateIntro(dt);    break;
     case GameState::Countdown:updateCountdown(dt);break;
     case GameState::Playing:  updatePlaying(dt);  break;
+    case GameState::SuccessFlyout:updateSuccessFlyout(dt); break;
+    case GameState::FailureCrash:updateFailureCrash(dt); break;
     case GameState::GameOver: updateGameOver(dt); break;
     case GameState::HighScoreEntry:updateHighScoreEntry(dt);break;
     }
@@ -792,19 +838,27 @@ void GameScene::updatePlaying(float dt)
     if (allGemsCollected) {
         m_score += qMax(0.f, m_energy) * 30.f + m_cleanFlightTime * 45.f;
         m_runWon = true;
-        endGame();
+        startSuccessFlyout(EndSequenceKind::AllGemsCaptured,
+                           QStringLiteral("ALL GEMS CAPTURED"),
+                           QStringLiteral("Cuarzito escapes into space"));
         return;
     }
 
     if (m_player.z >= m_tunnelPath.totalLength()) {
         m_score += qMax(0.f, m_energy) * 20.f + static_cast<float>(allGemsCollected ? 500 : 0);
         m_runWon = true;
-        endGame();
+        const int collected = static_cast<int>(std::count_if(m_chaseGems.cbegin(), m_chaseGems.cend(),
+                                                             [](const ChaseGem &gem) { return gem.collected; }));
+        startSuccessFlyout(EndSequenceKind::TrackComplete,
+                           QStringLiteral("TRACK COMPLETE"),
+                           QStringLiteral("%1/4 gems collected").arg(collected));
         return;
     }
 
     if (m_energy <= 0.f) {
-        endGame();
+        m_runWon = false;
+        startFailureCrash(QStringLiteral("OUT OF ENERGY"),
+                          QStringLiteral("Cuarzito loses control in the tunnel"));
         return;
     }
 
@@ -950,6 +1004,78 @@ void GameScene::updateGameOver(float dt)
         startAttract();
 }
 
+void GameScene::updateSuccessFlyout(float dt)
+{
+    m_endSequenceTimer -= dt;
+    m_time += dt;
+
+    if (m_endSequenceKind == EndSequenceKind::AllGemsCaptured) {
+        if (m_player.z < m_tunnelPath.totalLength()) {
+            m_player.speed = CHASE_MAX_SPEED;
+            m_tunnelZ = m_player.z;
+            m_worldSpeed = m_player.speed;
+            m_player.z += m_player.speed * dt;
+            m_endOpenTimer = 0.f;
+        } else {
+            m_endOpenTimer += dt;
+            m_player.speed += (CHASE_MIN_SPEED - m_player.speed) * qMin(1.f, dt * 1.2f);
+            m_player.z += m_player.speed * dt;
+            m_tunnelZ = m_player.z;
+            m_worldSpeed = m_player.speed;
+        }
+    } else {
+        if (m_endOpenTimer < 2.0f) {
+            m_endOpenTimer += dt;
+            m_player.speed += (CHASE_MIN_SPEED - m_player.speed) * qMin(1.f, dt * 1.35f);
+        } else {
+            m_player.speed = qMax(CHASE_MIN_SPEED, m_player.speed - 14.f * dt);
+        }
+        m_player.z += m_player.speed * dt;
+        m_tunnelZ = m_player.z;
+        m_worldSpeed = m_player.speed;
+    }
+
+    m_player.offX += (0.f - m_player.offX) * qMin(1.f, dt * 2.8f);
+    m_player.offY += (-26.f - m_player.offY) * qMin(1.f, dt * 1.8f);
+
+    const float targetY = m_endOpenTimer > 0.f ? CY - 18.f : CY + 10.f;
+    m_vpX += (CX - m_vpX) * qMin(1.f, dt * 2.0f);
+    m_vpY += (targetY - m_vpY) * qMin(1.f, dt * 1.8f);
+
+    setOverlay(QString("%1\n\n%2\n\nScore: %3")
+                   .arg(m_endTitle, m_endDetail)
+                   .arg(static_cast<int>(m_score)));
+    m_hudText.clear();
+
+    if (m_endSequenceTimer <= 0.f)
+        endGame();
+}
+
+void GameScene::updateFailureCrash(float dt)
+{
+    m_endSequenceTimer -= dt;
+    m_time += dt;
+
+    m_player.speed += (CHASE_MIN_SPEED - m_player.speed) * qMin(1.f, dt * 1.6f);
+    m_tunnelZ += m_player.speed * dt;
+    m_worldSpeed = m_player.speed;
+
+    m_player.offX += (0.f - m_player.offX) * qMin(1.f, dt * 2.0f);
+    m_player.offY += (36.f - m_player.offY) * qMin(1.f, dt * 1.2f);
+
+    m_vpX += (CX - m_vpX) * qMin(1.f, dt * 2.6f);
+    m_vpY += ((CY + 28.f) - m_vpY) * qMin(1.f, dt * 2.0f);
+    m_cameraShake = qMax(m_cameraShake, 0.12f);
+
+    setOverlay(QString("%1\n\n%2\n\nScore: %3")
+                   .arg(m_endTitle, m_endDetail)
+                   .arg(static_cast<int>(m_score)));
+    m_hudText.clear();
+
+    if (m_endSequenceTimer <= 0.f)
+        endGame();
+}
+
 void GameScene::updateHighScoreEntry(float dt)
 {
     m_time += dt;
@@ -1021,6 +1147,8 @@ void GameScene::startGame()
     m_revealTimer     = 0.f;
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
+    m_endSequenceTimer = 0.f;
+    m_endOpenTimer    = 0.f;
     m_cameraShake     = 0.f;
     m_scoreSubmitted  = false;
     m_runWon          = false;
@@ -1032,6 +1160,9 @@ void GameScene::startGame()
 
     m_hudText.clear();
     m_overlayText.clear();
+    m_endTitle.clear();
+    m_endDetail.clear();
+    m_endSequenceKind = EndSequenceKind::None;
     m_invulnerable = true;
     if (m_launchOptions.testMode) {
         m_overlayText = QString("TEST MODE: %1").arg(m_launchOptions.testName);
@@ -1072,6 +1203,8 @@ void GameScene::startAttract()
     m_revealTimer     = 0.f;
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
+    m_endSequenceTimer = 0.f;
+    m_endOpenTimer    = 0.f;
     m_cameraShake     = 0.f;
     m_scoreSubmitted  = false;
     m_runWon          = false;
@@ -1083,6 +1216,9 @@ void GameScene::startAttract()
     m_state           = GameState::Attract;
 
     m_hudText.clear();
+    m_endTitle.clear();
+    m_endDetail.clear();
+    m_endSequenceKind = EndSequenceKind::None;
     setOverlay(attractOverlayText());
 }
 
@@ -1109,6 +1245,8 @@ void GameScene::startIntro()
     m_cleanFlightTime = 0.f;
     m_introAnimT      = 0.f;
     m_impactFlash     = 0.f;
+    m_endSequenceTimer = 0.f;
+    m_endOpenTimer    = 0.f;
     m_cameraShake     = 0.f;
     m_scoreSubmitted  = false;
     m_runWon          = false;
@@ -1124,6 +1262,9 @@ void GameScene::startIntro()
     m_revealTimer     = m_revealDuration;
 
     m_hudText.clear();
+    m_endTitle.clear();
+    m_endDetail.clear();
+    m_endSequenceKind = EndSequenceKind::None;
     setOverlay("");
     m_audio.play(SoundCue::Start);
 }
@@ -1151,6 +1292,8 @@ void GameScene::startCountdown()
     m_revealTimer     = 0.f;
     m_revealDuration  = 0.f;
     m_impactFlash     = 0.f;
+    m_endSequenceTimer = 0.f;
+    m_endOpenTimer    = 0.f;
     m_cameraShake     = 0.f;
     m_scoreSubmitted  = false;
     m_runWon          = false;
@@ -1161,6 +1304,9 @@ void GameScene::startCountdown()
     m_state           = GameState::Countdown;
 
     m_hudText.clear();
+    m_endTitle.clear();
+    m_endDetail.clear();
+    m_endSequenceKind = EndSequenceKind::None;
     setOverlay("3");
 }
 
@@ -1172,7 +1318,6 @@ void GameScene::endGame()
     m_revealDuration = 1.5f;
     m_revealTimer    = m_revealDuration;
     m_impactFlash    = 1.f;
-    m_audio.play(SoundCue::GameOver);
 
     const int finalScore = static_cast<int>(m_score);
     if (!m_scoreSubmitted && m_highScores.qualifies(finalScore)) {
@@ -1180,8 +1325,9 @@ void GameScene::endGame()
         return;
     }
 
-    setOverlay(QString("%1\n\nScore: %2    Time: %3s\n\nPRESS SPACE TO RESTART")
-                   .arg(m_runWon ? "YOU WIN" : "GAME OVER")
+    setOverlay(QString("%1\n\n%2\n\nScore: %3    Time: %4s\n\nPRESS SPACE TO RESTART")
+                   .arg(m_endTitle.isEmpty() ? (m_runWon ? "YOU WIN" : "GAME OVER") : m_endTitle)
+                   .arg(m_endDetail)
                    .arg(finalScore)
                    .arg(static_cast<int>(m_survivalTime)));
     m_hudText.clear();
@@ -1198,6 +1344,36 @@ void GameScene::startHighScoreEntry(int score)
     m_initials = "AAA";
     m_hudText.clear();
     setOverlay(initialsEntryText());
+}
+
+void GameScene::startSuccessFlyout(EndSequenceKind kind, const QString &title, const QString &detail)
+{
+    m_state = GameState::SuccessFlyout;
+    m_endSequenceTimer = 3.6f;
+    m_endOpenTimer = (kind == EndSequenceKind::TrackComplete) ? 0.f : -1.f;
+    m_endSequenceKind = kind;
+    m_endTitle = title;
+    m_endDetail = detail;
+    m_revealDuration = 0.9f;
+    m_revealTimer = m_revealDuration;
+    m_impactFlash = qMax(m_impactFlash, 0.45f);
+    m_cameraShake = qMax(m_cameraShake, 0.12f);
+    m_audio.play(SoundCue::CollectSpecial);
+}
+
+void GameScene::startFailureCrash(const QString &title, const QString &detail)
+{
+    m_state = GameState::FailureCrash;
+    m_endSequenceTimer = 2.8f;
+    m_endOpenTimer = 0.f;
+    m_endSequenceKind = EndSequenceKind::OutOfEnergy;
+    m_endTitle = title;
+    m_endDetail = detail;
+    m_revealDuration = 1.1f;
+    m_revealTimer = m_revealDuration;
+    m_impactFlash = 1.f;
+    m_cameraShake = qMax(m_cameraShake, 0.45f);
+    m_audio.play(SoundCue::GameOver);
 }
 
 void GameScene::resetChaseGems()
@@ -1453,10 +1629,10 @@ void GameScene::drawMiniMap(QPainter *painter) const
     constexpr float Z_BEHIND = 260.f;
     constexpr float Z_AHEAD  = 2000.f;
     constexpr int   SAMPLES  = 72;
-    constexpr float STEP     = (Z_BEHIND + Z_AHEAD) / SAMPLES;
 
     const float zMin = m_player.z - Z_BEHIND;
-    const float zMax = m_player.z + Z_AHEAD;
+    const float zMax = qMin(m_player.z + Z_AHEAD, m_tunnelPath.totalLength());
+    const float STEP = qMax(1.f, (zMax - zMin) / SAMPLES);
 
     float xMin = 0.f, xMax = 0.f;
     float yMin = 0.f, yMax = 0.f;
@@ -1565,9 +1741,8 @@ void GameScene::drawMiniMap(QPainter *painter) const
         if (gem.z < zMin || gem.z > zMax) continue;
 
         const QPointF gemCenter = m_tunnelPath.sample(gem.z).center;
-        const QPointF gemOffset = m_tunnelPath.gemOffset(i, gem.z);
-        const QPointF gemDot = project3D(gemCenter.x() + gemOffset.x(),
-                                         gemCenter.y() + gemOffset.y(),
+        const QPointF gemDot = project3D(gemCenter.x(),
+                                         gemCenter.y(),
                                          gem.z);
 
         QRadialGradient gemGlow(gemDot, 6.f);

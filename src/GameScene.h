@@ -13,7 +13,8 @@
 
 class QPainter;
 
-enum class GameState { Attract, Intro, Countdown, Playing, GameOver, HighScoreEntry };
+enum class GameState { Attract, Intro, Countdown, Playing, SuccessFlyout, FailureCrash, GameOver, HighScoreEntry };
+enum class EndSequenceKind { None, TrackComplete, AllGemsCaptured, OutOfEnergy };
 
 class GameScene : public QObject {
     Q_OBJECT
@@ -131,6 +132,8 @@ private:
     void startIntro();
     void startCountdown();
     void startHighScoreEntry(int score);
+    void startSuccessFlyout(EndSequenceKind kind, const QString &title, const QString &detail);
+    void startFailureCrash(const QString &title, const QString &detail);
     void endGame();
     void resetChaseGems();
     void spawnBurst(float sx, float sy, bool special);
@@ -141,6 +144,8 @@ private:
     void updateCountdown(float dt);
     void updatePlaying(float dt);
     void updateChasePhysics(float dt);
+    void updateSuccessFlyout(float dt);
+    void updateFailureCrash(float dt);
     void updateGameOver(float dt);
     void updateHighScoreEntry(float dt);
     void updateHUD();
@@ -200,6 +205,8 @@ private:
     float m_revealTimer     = 0.f;
     float m_revealDuration  = 0.f;
     float m_impactFlash     = 0.f;
+    float m_endSequenceTimer = 0.f;
+    float m_endOpenTimer    = 0.f;
     bool  m_scoreSubmitted  = false;
     bool  m_runWon          = false;
     bool  m_wasWallContact  = false;
@@ -210,6 +217,8 @@ private:
 
     QString m_hudText;
     QString m_overlayText;
+    QString m_endTitle;
+    QString m_endDetail;
     QString m_diagText;
     float   m_diagTimer = 0.f;
     float    m_cameraShake = 0.f;
@@ -218,4 +227,5 @@ private:
     float    m_testTraceTimer = 0.f;
     QString  m_lastTestSegmentLabel;
     bool     m_lastTestWallContact = false;
+    EndSequenceKind m_endSequenceKind = EndSequenceKind::None;
 };
