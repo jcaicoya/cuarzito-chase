@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "name": "live_tunnel",
+  "units": {
+    "speed": 200,
+    "secondsPerSegment": 1,
+    "straightDurationSeconds": 3,
+    "turnDurationSeconds": 2,
+    "straightLength": 600,
+    "turnLength": 400,
+    "turnAngleDegrees": 45
+  },
+  "gems": [
+    { "startZ": 520, "speed": 2140 },
+    { "startZ": 1040, "speed": 2220 },
+    { "startZ": 1680, "speed": 2300 },
+    { "startZ": 2460, "speed": 2380 }
+  ],
+  "segments": [
+    { "type": "straight", "length": 700 },
+    { "type": "uphill", "length": 360, "angleDegrees": 30 },
+    { "type": "straight", "length": 520 },
+    { "type": "left", "length": 360, "angleDegrees": 30 },
+    { "type": "straight", "length": 520 },
+    { "type": "downhill", "length": 360, "angleDegrees": 30 },
+    { "type": "straight", "length": 520 },
+    { "type": "right", "length": 360, "angleDegrees": 30 },
+    { "type": "straight", "length": 620 },
+    { "type": "uphill", "length": 420, "angleDegrees": 38 },
+    { "type": "straight", "length": 420 },
+    { "type": "left", "length": 420, "angleDegrees": 42 },
+    { "type": "straight", "length": 520 },
+    { "type": "downhill", "length": 420, "angleDegrees": 38 },
+    { "type": "straight", "length": 420 },
+    { "type": "right", "length": 420, "angleDegrees": 42 },
+    { "type": "straight", "length": 680 },
+    { "type": "uphill", "length": 320, "angleDegrees": 24 },
+    { "type": "straight", "length": 440 },
+    { "type": "left", "length": 360, "angleDegrees": 28 },
+    { "type": "straight", "length": 440 },
+    { "type": "right", "length": 360, "angleDegrees": 28 },
+    { "type": "straight", "length": 700 },
+    { "type": "downhill", "length": 320, "angleDegrees": 24 },
+    { "type": "straight", "length": 760 }
+  ]
+}

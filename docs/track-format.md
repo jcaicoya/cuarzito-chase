@@ -3,7 +3,7 @@
 The tunnel track is loaded from Qt resources at startup. The first track lives at:
 
 ```text
-resources/tracks/first_tunnel.json
+resources/tracks/demo_tunnel.json
 ```
 
 It is embedded through:
@@ -15,7 +15,7 @@ resources/resources.qrc
 Runtime code reads it with:
 
 ```cpp
-QFile file(":/tracks/first_tunnel.json");
+QFile file(":/tracks/demo_tunnel.json");
 ```
 
 ## Units

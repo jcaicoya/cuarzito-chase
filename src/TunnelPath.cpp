@@ -29,16 +29,17 @@ float curvatureFor(float angleDegrees, float length)
 // ---------------------------------------------------------------------------
 TunnelPath::TunnelPath(const QString &resourcePath)
 {
-    QVector<Segment> segments = loadTrack(resourcePath);
-    if (segments.isEmpty()) {
+    TrackData data = loadTrack(resourcePath);
+    if (data.segments.isEmpty()) {
         qCWarning(trackLog) << "Using fallback tunnel track";
-        segments = fallbackTrack();
+        data = fallbackTrack();
     }
 
-    precompute(segments);
+    m_gemConfigs = data.gems;
+    precompute(data.segments);
 }
 
-QVector<TunnelPath::Segment> TunnelPath::loadTrack(const QString &resourcePath) const
+TunnelPath::TrackData TunnelPath::loadTrack(const QString &resourcePath) const
 {
     QFile file(resourcePath);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -53,6 +54,7 @@ QVector<TunnelPath::Segment> TunnelPath::loadTrack(const QString &resourcePath) 
         return {};
     }
 
+    TrackData data;
     const QJsonObject root = doc.object();
     const QJsonArray segmentArray = root.value(QStringLiteral("segments")).toArray();
     if (segmentArray.isEmpty()) {
@@ -60,8 +62,7 @@ QVector<TunnelPath::Segment> TunnelPath::loadTrack(const QString &resourcePath) 
         return {};
     }
 
-    QVector<Segment> segments;
-    segments.reserve(segmentArray.size());
+    data.segments.reserve(segmentArray.size());
 
     for (int i = 0; i < segmentArray.size(); ++i) {
         const QJsonObject obj = segmentArray.at(i).toObject();
@@ -98,16 +99,32 @@ QVector<TunnelPath::Segment> TunnelPath::loadTrack(const QString &resourcePath) 
             continue;
         }
 
-        segments.append(segment);
+        data.segments.append(segment);
     }
 
-    return segments;
+    const QJsonArray gemArray = root.value(QStringLiteral("gems")).toArray();
+    data.gems.reserve(gemArray.size());
+    for (int i = 0; i < gemArray.size(); ++i) {
+        const QJsonObject obj = gemArray.at(i).toObject();
+        GemConfig gem;
+        gem.startZ = static_cast<float>(obj.value(QStringLiteral("startZ")).toDouble());
+        gem.speed = static_cast<float>(obj.value(QStringLiteral("speed")).toDouble());
+        if (gem.startZ <= 0.f || gem.speed <= 0.f) {
+            qCWarning(trackLog) << "Skipping gem config with invalid values" << i
+                                << gem.startZ << gem.speed;
+            continue;
+        }
+        data.gems.append(gem);
+    }
+
+    return data;
 }
 
-QVector<TunnelPath::Segment> TunnelPath::fallbackTrack() const
+TunnelPath::TrackData TunnelPath::fallbackTrack() const
 {
     const float turn = curvatureFor(kDefaultTurnAngleDegrees, kDefaultSegmentLength);
-    return {
+    TrackData data;
+    data.segments = {
         {kDefaultSegmentLength, 0.f, 0.f},
         {kDefaultSegmentLength, -turn, 0.f},
         {kDefaultSegmentLength, 0.f, 0.f},
@@ -118,6 +135,13 @@ QVector<TunnelPath::Segment> TunnelPath::fallbackTrack() const
         {kDefaultSegmentLength, turn, 0.f},
         {kDefaultSegmentLength, 0.f, 0.f},
     };
+    data.gems = {
+        {380.f, 205.f},
+        {680.f, 212.f},
+        {1040.f, 219.f},
+        {1460.f, 226.f},
+    };
+    return data;
 }
 
 void TunnelPath::precompute(const QVector<Segment> &segments)

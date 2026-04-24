@@ -22,7 +22,7 @@ The repository currently contains a playable Qt prototype with an OpenGL-ready w
 - Chase-game infrastructure around a persistent tunnel path and world `z` positions.
 - Procedural placeholder Cuarzito drawn with `QPainter`.
 - Dedicated `CaveRenderer` with a QPainter-based streaming faceted tunnel.
-- Track data loaded from `resources/tracks/first_tunnel.json` through Qt resources.
+- Track data loaded from `resources/tracks/demo_tunnel.json` and `resources/tracks/live_tunnel.json` through Qt resources.
 - Fullscreen uses fit scaling so the full authored 1280x720 frame stays visible on ultrawide screens.
 - Cuarzito is currently drawn without a persistent aura to preserve tunnel visibility.
 
@@ -182,7 +182,8 @@ preshow-game/
 ├── resources/
 │   ├── resources.qrc
 │   └── tracks/
-│       └── first_tunnel.json
+│       ├── demo_tunnel.json
+│       └── live_tunnel.json
 ├── cuarzito_preshow_game_design.md
 ├── cave.png
 ├── cuarzito.png
@@ -307,7 +308,7 @@ src/
 - [ ] Restore and retune curve inertia after the vertical compensation contract is fixed. It is intentionally set to zero right now for debugging.
 - [ ] Add stronger acceleration and braking feel: speed lines, tunnel pulse, FOV/projection response, engine/air sound, or equivalent feedback.
 - [ ] Simplify/tune the 3D cube mini-map so left/right/up/down track motion is readable without clutter.
-- [ ] Build a GUI tunnel editor for `resources/tracks/first_tunnel.json`.
+- [ ] Build a GUI tunnel editor for the selectable track JSON files under `resources/tracks/`.
 - [ ] Rebalance speeds so Cuarzito cannot trivially overtake gems; he may need to brake or manage distance to let gems pass/settle ahead.
 - [ ] On game end, make Cuarzito exit the cave into the stars/space instead of only stopping in the tunnel/game-over overlay.
 - [ ] Add obstacles inside the tunnel.

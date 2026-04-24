@@ -35,6 +35,25 @@ GameScene::GameScene(const GameLaunchOptions &options, QObject *parent)
     , m_launchOptions(options)
     , m_tunnelPath(options.trackResource)
 {
+    m_trackOptions = {
+        {QStringLiteral("DEMO TUNNEL"),
+         QStringLiteral(":/tracks/demo_tunnel.json"),
+         QStringLiteral("Short test route")},
+        {QStringLiteral("LIVE TUNNEL"),
+         QStringLiteral(":/tracks/live_tunnel.json"),
+         QStringLiteral("Longer event route")},
+    };
+
+    if (!m_launchOptions.testMode) {
+        for (int i = 0; i < m_trackOptions.size(); ++i) {
+            if (m_trackOptions[i].resource == m_launchOptions.trackResource) {
+                m_selectedTrackIndex = i;
+                break;
+            }
+        }
+        applySelectedTrack();
+    }
+
     m_audio.startAmbient();
     if (m_launchOptions.testMode)
         startGame();
@@ -208,6 +227,30 @@ void GameScene::logTestCompletion() const
                              .arg(m_invulnerable ? QStringLiteral("yes") : QStringLiteral("no"));
     std::fprintf(stderr, "%s\n", line.toLocal8Bit().constData());
     std::fflush(stderr);
+}
+
+void GameScene::applySelectedTrack()
+{
+    if (m_launchOptions.testMode || m_trackOptions.isEmpty())
+        return;
+
+    m_selectedTrackIndex = qBound(0, m_selectedTrackIndex, m_trackOptions.size() - 1);
+    m_launchOptions.trackResource = m_trackOptions[m_selectedTrackIndex].resource;
+    m_tunnelPath = TunnelPath(m_launchOptions.trackResource);
+}
+
+void GameScene::cycleTrackSelection(int dir)
+{
+    if (m_launchOptions.testMode || m_trackOptions.isEmpty() || dir == 0)
+        return;
+
+    m_selectedTrackIndex += dir;
+    if (m_selectedTrackIndex < 0)
+        m_selectedTrackIndex = m_trackOptions.size() - 1;
+    else if (m_selectedTrackIndex >= m_trackOptions.size())
+        m_selectedTrackIndex = 0;
+
+    applySelectedTrack();
 }
 
 float GameScene::turnOcclusion() const
@@ -638,6 +681,11 @@ void GameScene::updateAttract(float dt)
     m_vpX = CX + std::sin(m_time * 0.18f) * 90.f;
     m_vpY = CY + std::sin(m_time * 0.13f + 1.0f) * 65.f;
 
+    if (m_input.isLeftJustPressed())
+        cycleTrackSelection(-1);
+    if (m_input.isRightJustPressed())
+        cycleTrackSelection(1);
+
     setOverlay(attractOverlayText());
     if (m_input.isConfirmJustPressed())
         startIntro();
@@ -949,6 +997,7 @@ void GameScene::updateHighScoreEntry(float dt)
 
 void GameScene::startGame()
 {
+    applySelectedTrack();
     resetChaseGems();
     m_popups.clear();
     m_bursts.clear();
@@ -1039,6 +1088,7 @@ void GameScene::startAttract()
 
 void GameScene::startIntro()
 {
+    applySelectedTrack();
     resetChaseGems();
     m_popups.clear();
     m_bursts.clear();
@@ -1152,17 +1202,23 @@ void GameScene::startHighScoreEntry(int score)
 
 void GameScene::resetChaseGems()
 {
-    // Gem speed (155) is clearly slower than player base speed (235).
-    // Relative catch-up = 80 units/s on a straight.  Curves and wall contacts
-    // are the actual challenge, not raw speed.  Starting z values are tighter
-    // so all four gems are reachable within the 20-second window.
-    // Gems are now faster so the player must actively accelerate to catch them,
-    // not simply coast at base speed.  Progressive speeds make later gems harder.
+    const QVector<TunnelPath::GemConfig> configs = m_tunnelPath.gemConfigs();
+    const auto gemConfigAt = [&](int index, float fallbackZ, float fallbackSpeed) {
+        if (index < configs.size())
+            return configs[index];
+        return TunnelPath::GemConfig{fallbackZ, fallbackSpeed};
+    };
+
+    const TunnelPath::GemConfig blueCfg   = gemConfigAt(0,  380.f, 205.f);
+    const TunnelPath::GemConfig orangeCfg = gemConfigAt(1,  680.f, 212.f);
+    const TunnelPath::GemConfig yellowCfg = gemConfigAt(2, 1040.f, 219.f);
+    const TunnelPath::GemConfig cyanCfg   = gemConfigAt(3, 1460.f, 226.f);
+
     m_chaseGems = {
-        {"BLUE",   QColor( 65, 155, 255), QColor(150, 220, 255),  380.f, 178.f, 23.f,  500, false},
-        {"ORANGE", QColor(255, 135,  35), QColor(255, 215, 105),  680.f, 182.f, 25.f,  750, false},
-        {"YELLOW", QColor(255, 230,  65), QColor(255, 250, 170), 1040.f, 186.f, 27.f, 1000, false},
-        {"CYAN",   QColor( 65, 245, 230), QColor(180, 255, 245), 1460.f, 190.f, 30.f, 1500, false},
+        {"BLUE",   QColor( 65, 155, 255), QColor(150, 220, 255), blueCfg.startZ,   blueCfg.speed,   23.f,  500, false},
+        {"ORANGE", QColor(255, 135,  35), QColor(255, 215, 105), orangeCfg.startZ, orangeCfg.speed, 25.f,  750, false},
+        {"YELLOW", QColor(255, 230,  65), QColor(255, 250, 170), yellowCfg.startZ, yellowCfg.speed, 27.f, 1000, false},
+        {"CYAN",   QColor( 65, 245, 230), QColor(180, 255, 245), cyanCfg.startZ,   cyanCfg.speed,   30.f, 1500, false},
     };
 }
 
@@ -1248,7 +1304,22 @@ void GameScene::restartRun()
 
 QString GameScene::attractOverlayText() const
 {
-    return "CUARZITO\n\nPRESS SPACE TO START";
+    if (m_launchOptions.testMode)
+        return "CUARZITO\n\nPRESS SPACE TO START";
+
+    const QString trackLabel = selectedTrackLabel();
+    const QString trackSubtitle = m_trackOptions.isEmpty()
+        ? QString()
+        : m_trackOptions[m_selectedTrackIndex].subtitle;
+    return QString("CUARZITO\n\nTRACK  %1\n%2\n\nLEFT / RIGHT TO CHANGE\nSPACE TO START")
+        .arg(trackLabel, trackSubtitle);
+}
+
+QString GameScene::selectedTrackLabel() const
+{
+    if (m_trackOptions.isEmpty())
+        return QStringLiteral("NONE");
+    return m_trackOptions[qBound(0, m_selectedTrackIndex, m_trackOptions.size() - 1)].label;
 }
 
 QString GameScene::initialsEntryText() const
@@ -1475,8 +1546,8 @@ void GameScene::drawMiniMap(QPainter *painter) const
 
     // Player position
     const QPointF playerCenter = m_tunnelPath.sample(m_player.z).center;
-    const QPointF playerDot = project3D(playerCenter.x() + m_player.offX,
-                                        playerCenter.y() + m_player.offY,
+    const QPointF playerDot = project3D(playerCenter.x(),
+                                        playerCenter.y(),
                                         m_player.z);
     painter->setPen(Qt::NoPen);
     QRadialGradient playerGlow(playerDot, 10.f);

@@ -6,5 +6,5 @@ struct GameLaunchOptions {
     bool testMode = false;
     bool traceMode = false;
     QString testName;
-    QString trackResource = QStringLiteral(":/tracks/first_tunnel.json");
+    QString trackResource = QStringLiteral(":/tracks/demo_tunnel.json");
 };

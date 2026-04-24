@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "first_tunnel",
+  "name": "demo_tunnel",
   "units": {
     "speed": 200,
     "secondsPerSegment": 1,
@@ -10,6 +10,12 @@
     "turnLength": 400,
     "turnAngleDegrees": 45
   },
+  "gems": [
+    { "startZ": 380, "speed": 205 },
+    { "startZ": 680, "speed": 212 },
+    { "startZ": 1040, "speed": 219 },
+    { "startZ": 1460, "speed": 226 }
+  ],
   "segments": [
     { "type": "straight", "length": 600 },
     { "type": "uphill", "length": 400, "angleDegrees": 45 },

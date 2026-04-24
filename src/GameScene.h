@@ -98,6 +98,12 @@ private:
         QColor color;
     };
 
+    struct TrackOption {
+        QString label;
+        QString resource;
+        QString subtitle;
+    };
+
     // ---------------------------------------------------------------
     // Projection helpers — non-static, use moving vanishing point
     // ---------------------------------------------------------------
@@ -114,6 +120,8 @@ private:
     QString currentTestSegmentLabel() const;
     void logTestTrace(bool force = false);
     void logTestCompletion() const;
+    void applySelectedTrack();
+    void cycleTrackSelection(int dir);
 
     // ---------------------------------------------------------------
     // Game flow
@@ -139,6 +147,7 @@ private:
     void setOverlay(const QString &text);
     QString attractOverlayText() const;
     QString initialsEntryText() const;
+    QString selectedTrackLabel() const;
 
     // ---------------------------------------------------------------
     // Rendering passes
@@ -169,6 +178,8 @@ private:
     QList<ChaseGem>    m_chaseGems;
     QList<ScorePopup>  m_popups;
     QList<BurstParticle> m_bursts;
+    QList<TrackOption> m_trackOptions;
+    int                m_selectedTrackIndex = 0;
 
     // Vanishing point (moves as the tunnel curves)
     float m_vpX  = CX;

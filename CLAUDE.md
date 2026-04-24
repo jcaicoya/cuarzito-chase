@@ -1,4 +1,4 @@
-# CLAUDE.md - Cuarzito Pre-Show Game
+ # CLAUDE.md - Cuarzito Pre-Show Game
 
 Context and working instructions for AI-assisted development on this project.
 

@@ -6,6 +6,11 @@
 
 class TunnelPath {
 public:
+    struct GemConfig {
+        float startZ = 0.f;
+        float speed = 0.f;
+    };
+
     struct Sample {
         QPointF center;
         QPointF tangent;
@@ -16,10 +21,11 @@ public:
         float curvatureV = 0.f;   // vertical curvature at this z
     };
 
-    explicit TunnelPath(const QString &resourcePath = QStringLiteral(":/tracks/first_tunnel.json"));
+    explicit TunnelPath(const QString &resourcePath = QStringLiteral(":/tracks/demo_tunnel.json"));
 
     Sample  sample(float z) const;
     QPointF gemOffset(int gemIndex, float z) const;
+    QVector<GemConfig> gemConfigs() const { return m_gemConfigs; }
 
     // Total defined track length in world units
     float totalLength() const { return m_totalLength; }
@@ -42,13 +48,19 @@ private:
         float curvV = 0.f;
     };
 
-    QVector<Segment> loadTrack(const QString &resourcePath) const;
-    QVector<Segment> fallbackTrack() const;
+    struct TrackData {
+        QVector<Segment> segments;
+        QVector<GemConfig> gems;
+    };
+
+    TrackData loadTrack(const QString &resourcePath) const;
+    TrackData fallbackTrack() const;
     void precompute(const QVector<Segment> &segments);
 
     QPointF centerAt(float z) const;
     float   radiusAt(float z) const;
 
     QVector<Keyframe> m_keyframes;
+    QVector<GemConfig> m_gemConfigs;
     float             m_totalLength = 0.f;
 };
