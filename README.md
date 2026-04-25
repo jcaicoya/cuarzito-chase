@@ -25,6 +25,7 @@ The repository currently contains a playable Qt prototype with an OpenGL-ready w
 - Track data loaded from `resources/tracks/demo_tunnel.json` and `resources/tracks/live_tunnel.json` through Qt resources.
 - Attract-mode track selection with Left/Right and confirm.
 - Per-track gem `startZ` and `speed` configuration loaded from each track JSON.
+- Keyboard, XInput, and optional SDL3 controller input through `InputManager`; SDL3 runtime loading/polling lives in `SdlControllerBackend`.
 - Energy-based failure in place of the old countdown-loss model.
 - Route-driven vertical horizon hiding for uphill/downhill in enclosed tunnel gameplay.
 - Fullscreen uses fit scaling so the full authored 1280x720 frame stays visible on ultrawide screens.
@@ -66,7 +67,7 @@ Still intentionally true:
 
 ## Visual References
 
-Two root-level PNG files define the desired style.
+PNG reference assets live under `resources/images/` when checked in.
 
 ### `cave.png`
 
@@ -82,7 +83,7 @@ Reference for the cave/tunnel environment:
 
 The game cave should not be photorealistic. It should be stage-readable, dark, atmospheric, and clearly playable from across a room.
 
-### `cuarzito.png`
+### `resources/images/cuarzito.png`
 
 Reference for the player character:
 
@@ -188,13 +189,14 @@ preshow-game/
 │       ├── demo_tunnel.json
 │       └── live_tunnel.json
 ├── cuarzito_preshow_game_design.md
-├── cave.png
-├── cuarzito.png
+├── resources/images/
+│   └── cuarzito.png
 └── src/
     ├── main.cpp
     ├── MainWindow.h / .cpp
     ├── GameWidget.h / .cpp
     ├── GameScene.h / .cpp
+    ├── SdlControllerBackend.h / .cpp
     └── InputManager.h / .cpp
 ```
 
@@ -208,7 +210,8 @@ src/
 ├── CaveRenderer.h / .cpp     # cave/space/tunnel renderer
 ├── GameScene.h / .cpp        # game state, entities, update, draw passes
 ├── TunnelPath.h / .cpp       # world-z tunnel center, radius, and curve samples
-├── InputManager.h / .cpp
+├── InputManager.h / .cpp     # action abstraction, keyboard, and XInput polling
+├── SdlControllerBackend.h / .cpp # optional SDL3 runtime backend for DualSense/gamepads
 ├── HighScoreManager.h / .cpp
 └── shaders/
     ├── cave.vert
@@ -275,7 +278,7 @@ src/
 ### 4. Upgrade Cuarzito
 
 - Improve the procedural character silhouette.
-- Make the hood and cloak closer to `cuarzito.png`.
+- Make the hood and cloak closer to `resources/images/cuarzito.png`.
 - Keep the default pose rear-facing, with only side glimpses of the neon green visor.
 - Add blue electric aura and subtle idle bob.
 - Add brief visor reveal on crystal pickup and game over.
@@ -297,7 +300,8 @@ src/
 - [x] Introduce abstract actions: move, confirm, cancel, fullscreen.
 - [x] Map keyboard to actions first.
 - [x] Add basic Windows XInput gamepad support.
-- [x] Add optional dynamic SDL2 controller backend for DualSense.
+- [x] Add optional dynamic SDL3 controller backend for DualSense.
+- [x] Move SDL3 runtime loading and polling into `SdlControllerBackend`.
 - Tune dead zone and sensitivity.
 
 ### 7. Polish for Live Use
@@ -337,9 +341,9 @@ src/
 | Fullscreen toggle | F11 | Optional |
 | Quit development build | Escape | Optional |
 
-DualSense note: PlayStation controllers usually do not expose themselves as XInput devices. For the show controller, place `SDL2.dll` beside `cuarzito-race.exe` or make it available on `PATH`; the game will load it dynamically and use SDL's controller mapping when present.
+DualSense note: PlayStation controllers usually do not expose themselves as XInput devices. For the show controller, place `SDL3.dll` beside `cuarzito-race.exe` or make it available on `PATH`; the game will load it dynamically through `SdlControllerBackend` and use SDL's controller mapping when present.
 
-Open issue: the current DualSense controller still did not respond in local testing even after the controller was updated and confirmed working elsewhere. Keep keyboard as the reliable fallback for now. Later work should add controller diagnostics, verify whether SDL2 is actually loaded, and inspect the controller GUID/mapping.
+Keep keyboard as the reliable fallback for live-event use. SDL3 diagnostics are available through `InputManager::gamepadDiagnostics()` and include DLL load status plus detected controller names/IDs.
 
 ## Build Notes
 

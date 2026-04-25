@@ -47,6 +47,9 @@ cmake-build-release/
 # IDE: VS Code
 .vscode/
 
+# Local AI/tooling state
+.claude/
+
 # Game data (runtime-generated)
 highscores.json
 

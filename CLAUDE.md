@@ -38,7 +38,7 @@ Implemented now:
 - `QTimer` game loop in `GameWidget`.
 - `QPainter` drawing on the OpenGL widget.
 - Attract, Intro, Countdown, Playing, SuccessFlyout, FailureCrash, GameOver, and HighScoreEntry states.
-- Keyboard, XInput, and optional SDL3 controller input through `InputManager`.
+- Keyboard, XInput, and optional SDL3 controller input through `InputManager`; SDL3 runtime loading/polling is isolated in `SdlControllerBackend`.
 - Pseudo-3D projection using a moving vanishing point.
 - Four-direction movement inside tunnel bounds.
 - Four persistent chase gems.
@@ -76,7 +76,8 @@ Important files:
 | `src/GameScene.*` | Game state, entities, projection, updates, drawing. |
 | `src/TunnelPath.*` | Provides deterministic tunnel center/radius samples by world `z` for the chase redesign. |
 | `src/AudioManager.*` | Generates cue tones and a subtle ambient loop, then plays them through `QSoundEffect`. |
-| `src/InputManager.*` | Maps keyboard, XInput, and optional SDL2 controller input to abstract actions. |
+| `src/InputManager.*` | Maps keyboard and gamepad inputs to abstract actions; owns keyboard/XInput state and delegates SDL3 polling. |
+| `src/SdlControllerBackend.*` | Windows-only optional SDL3 runtime backend for DualSense/gamepads; dynamically loads `SDL3.dll`, polls SDL gamepads, and reports diagnostics. |
 | `CMakeLists.txt` | Qt Widgets plus OpenGL/OpenGLWidgets build. |
 
 The tunnel traversal is working and the walls, floor, and ceiling stream past the camera. The current priority is improving readability and game feel: route readability, gem pacing, ending polish, and track iteration still need work.
@@ -136,7 +137,7 @@ Key constants in `CaveRenderer::drawCave()`:
 
 ## Visual References
 
-Two root-level images define the style.
+Reference images live under `resources/images/` when checked in.
 
 ### `cave.png`
 
@@ -152,7 +153,7 @@ Environment direction:
 
 For gameplay, use this as inspiration rather than a literal static background. The tunnel must remain readable and collision-safe.
 
-### `cuarzito.png`
+### `resources/images/cuarzito.png`
 
 Player direction:
 
@@ -407,6 +408,7 @@ enum class GameState {
 - [x] Keep keyboard mapping.
 - [x] Add basic Windows XInput gamepad support.
 - [x] Add SDL3 dynamic backend for DualSense (confirmed working).
+- [x] Move SDL3 runtime loading and polling into `SdlControllerBackend`.
 - Tune dead zone and sensitivity.
 
 ### Phase G - Polish

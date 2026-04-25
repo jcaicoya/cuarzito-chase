@@ -27,6 +27,7 @@ add_executable(cuarzito-race
     src/AudioManager.cpp
     src/HighScoreManager.cpp
     src/InputManager.cpp
+    src/SdlControllerBackend.cpp
     resources/resources.qrc
 )
 
