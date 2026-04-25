@@ -7,14 +7,61 @@
 #include <cmath>
 #include <tuple>
 
+// ---------------------------------------------------------------------------
+// WAV format constants
+// ---------------------------------------------------------------------------
+static constexpr float kPi              = 3.14159265358979323846f;
+static constexpr int   kSampleRate      = 44100;
+static constexpr int   kChannels        = 1;
+static constexpr int   kBitsPerSample   = 16;
+static constexpr float kPcmMaxAmplitude = 32767.f;
+
+// Builds the 44-byte standard PCM WAV header for mono 16-bit audio at kSampleRate.
+static QByteArray buildWavHeader(int sampleCount)
+{
+    const int dataSize = sampleCount * kChannels * kBitsPerSample / 8;
+
+    QByteArray header;
+    header.reserve(44);
+
+    auto appendBytes = [&](const char *data, int size) { header.append(data, size); };
+    auto appendU16   = [&](quint16 v) {
+        v = qToLittleEndian(v);
+        appendBytes(reinterpret_cast<const char *>(&v), sizeof(v));
+    };
+    auto appendU32   = [&](quint32 v) {
+        v = qToLittleEndian(v);
+        appendBytes(reinterpret_cast<const char *>(&v), sizeof(v));
+    };
+
+    appendBytes("RIFF", 4);
+    appendU32(36 + dataSize);                                   // chunk size
+    appendBytes("WAVE", 4);
+    appendBytes("fmt ", 4);
+    appendU32(16);                                              // PCM fmt chunk size
+    appendU16(1);                                               // PCM format tag
+    appendU16(kChannels);
+    appendU32(kSampleRate);
+    appendU32(kSampleRate * kChannels * kBitsPerSample / 8);    // byte rate
+    appendU16(kChannels * kBitsPerSample / 8);                  // block align
+    appendU16(kBitsPerSample);
+    appendBytes("data", 4);
+    appendU32(dataSize);
+
+    return header;
+}
+
+// ---------------------------------------------------------------------------
+// AudioManager
+// ---------------------------------------------------------------------------
 AudioManager::AudioManager(QObject *parent) : QObject(parent)
 {
     const QList<std::tuple<SoundCue, QString, float, int, float>> cues = {
-        {SoundCue::Start,          "start",          620.f, 120, 0.24f},
-        {SoundCue::Confirm,        "confirm",        480.f,  80, 0.20f},
-        {SoundCue::Collect,        "collect",        880.f,  90, 0.20f},
-        {SoundCue::CollectSpecial, "collect_special",1240.f, 130, 0.24f},
-        {SoundCue::GameOver,       "game_over",      150.f, 260, 0.28f},
+        {SoundCue::Start,          "start",           620.f, 120, 0.24f},
+        {SoundCue::Confirm,        "confirm",         480.f,  80, 0.20f},
+        {SoundCue::Collect,        "collect",         880.f,  90, 0.20f},
+        {SoundCue::CollectSpecial, "collect_special", 1240.f, 130, 0.24f},
+        {SoundCue::GameOver,       "game_over",       150.f, 260, 0.28f},
     };
 
     for (const auto &[cue, name, freq, duration, volume] : cues) {
@@ -86,47 +133,18 @@ QUrl AudioManager::createAmbient()
 
 QByteArray AudioManager::makeWav(float frequency, int durationMs, float volume)
 {
-    constexpr float PI = 3.14159265358979323846f;
-    constexpr int sampleRate = 44100;
-    constexpr int channels = 1;
-    constexpr int bitsPerSample = 16;
-    const int sampleCount = sampleRate * durationMs / 1000;
-    const int dataSize = sampleCount * channels * bitsPerSample / 8;
+    const int sampleCount = kSampleRate * durationMs / 1000;
+    const int dataSize    = sampleCount * kChannels * kBitsPerSample / 8;
 
-    QByteArray wav;
-    wav.reserve(44 + dataSize);
-    auto appendBytes = [&](const char *data, int size) {
-        wav.append(data, size);
-    };
-    auto appendU16 = [&](quint16 value) {
-        value = qToLittleEndian(value);
-        appendBytes(reinterpret_cast<const char *>(&value), sizeof(value));
-    };
-    auto appendU32 = [&](quint32 value) {
-        value = qToLittleEndian(value);
-        appendBytes(reinterpret_cast<const char *>(&value), sizeof(value));
-    };
-
-    appendBytes("RIFF", 4);
-    appendU32(36 + dataSize);
-    appendBytes("WAVE", 4);
-    appendBytes("fmt ", 4);
-    appendU32(16);
-    appendU16(1);
-    appendU16(channels);
-    appendU32(sampleRate);
-    appendU32(sampleRate * channels * bitsPerSample / 8);
-    appendU16(channels * bitsPerSample / 8);
-    appendU16(bitsPerSample);
-    appendBytes("data", 4);
-    appendU32(dataSize);
+    QByteArray wav = buildWavHeader(sampleCount);
+    wav.reserve(wav.size() + dataSize);
 
     for (int i = 0; i < sampleCount; ++i) {
-        const float t = static_cast<float>(i) / static_cast<float>(sampleRate);
-        const float env = std::sin(PI * qMin(1.f, static_cast<float>(i) / sampleCount));
-        const float sample = std::sin(2.f * PI * frequency * t) * volume * env;
-        qint16 pcm = qToLittleEndian(static_cast<qint16>(sample * 32767.f));
-        appendBytes(reinterpret_cast<const char *>(&pcm), sizeof(pcm));
+        const float t   = static_cast<float>(i) / static_cast<float>(kSampleRate);
+        const float env = std::sin(kPi * qMin(1.f, static_cast<float>(i) / sampleCount));
+        const float s   = std::sin(2.f * kPi * frequency * t) * volume * env;
+        qint16 pcm = qToLittleEndian(static_cast<qint16>(s * kPcmMaxAmplitude));
+        wav.append(reinterpret_cast<const char *>(&pcm), sizeof(pcm));
     }
 
     return wav;
@@ -134,51 +152,22 @@ QByteArray AudioManager::makeWav(float frequency, int durationMs, float volume)
 
 QByteArray AudioManager::makeAmbientWav(int durationMs, float volume)
 {
-    constexpr float PI = 3.14159265358979323846f;
-    constexpr int sampleRate = 44100;
-    constexpr int channels = 1;
-    constexpr int bitsPerSample = 16;
-    const int sampleCount = sampleRate * durationMs / 1000;
-    const int dataSize = sampleCount * channels * bitsPerSample / 8;
+    const int sampleCount = kSampleRate * durationMs / 1000;
+    const int dataSize    = sampleCount * kChannels * kBitsPerSample / 8;
 
-    QByteArray wav;
-    wav.reserve(44 + dataSize);
-    auto appendBytes = [&](const char *data, int size) {
-        wav.append(data, size);
-    };
-    auto appendU16 = [&](quint16 value) {
-        value = qToLittleEndian(value);
-        appendBytes(reinterpret_cast<const char *>(&value), sizeof(value));
-    };
-    auto appendU32 = [&](quint32 value) {
-        value = qToLittleEndian(value);
-        appendBytes(reinterpret_cast<const char *>(&value), sizeof(value));
-    };
-
-    appendBytes("RIFF", 4);
-    appendU32(36 + dataSize);
-    appendBytes("WAVE", 4);
-    appendBytes("fmt ", 4);
-    appendU32(16);
-    appendU16(1);
-    appendU16(channels);
-    appendU32(sampleRate);
-    appendU32(sampleRate * channels * bitsPerSample / 8);
-    appendU16(channels * bitsPerSample / 8);
-    appendU16(bitsPerSample);
-    appendBytes("data", 4);
-    appendU32(dataSize);
+    QByteArray wav = buildWavHeader(sampleCount);
+    wav.reserve(wav.size() + dataSize);
 
     for (int i = 0; i < sampleCount; ++i) {
-        const float t = static_cast<float>(i) / static_cast<float>(sampleRate);
-        const float drone = std::sin(2.f * PI * 55.f * t) * 0.50f
-                          + std::sin(2.f * PI * 82.5f * t) * 0.28f
-                          + std::sin(2.f * PI * 110.f * t) * 0.18f;
-        const float shimmer = std::sin(2.f * PI * 440.f * t) * 0.035f
-                            + std::sin(2.f * PI * 660.f * t) * 0.020f;
-        const float sample = qBound(-1.f, (drone + shimmer) * volume, 1.f);
-        qint16 pcm = qToLittleEndian(static_cast<qint16>(sample * 32767.f));
-        appendBytes(reinterpret_cast<const char *>(&pcm), sizeof(pcm));
+        const float t       = static_cast<float>(i) / static_cast<float>(kSampleRate);
+        const float drone   = std::sin(2.f * kPi *  55.f * t) * 0.50f
+                            + std::sin(2.f * kPi *  82.5f * t) * 0.28f
+                            + std::sin(2.f * kPi * 110.f * t) * 0.18f;
+        const float shimmer = std::sin(2.f * kPi * 440.f * t) * 0.035f
+                            + std::sin(2.f * kPi * 660.f * t) * 0.020f;
+        const float s = qBound(-1.f, (drone + shimmer) * volume, 1.f);
+        qint16 pcm = qToLittleEndian(static_cast<qint16>(s * kPcmMaxAmplitude));
+        wav.append(reinterpret_cast<const char *>(&pcm), sizeof(pcm));
     }
 
     return wav;
