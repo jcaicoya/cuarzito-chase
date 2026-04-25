@@ -161,8 +161,6 @@ private:
     void drawBursts(QPainter *p) const;
     void drawPopups(QPainter *p) const;
     void drawHUD(QPainter *p) const;
-    void drawHighScoreEntry(QPainter *p) const;
-    void drawTopScores(QPainter *p, float x, float y, int maxRows) const;
     void drawImpactFlash(QPainter *p) const;
     void drawMiniMap(QPainter *p) const;
 

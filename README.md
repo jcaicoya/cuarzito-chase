@@ -210,6 +210,7 @@ src/
 ├── GameWidget.h / .cpp       # QOpenGLWidget, owns rendering loop
 ├── CaveRenderer.h / .cpp     # cave/space/tunnel renderer
 ├── GameScene.h / .cpp        # game state, entities, update, draw passes
+├── HudRenderer.h / .cpp      # HUD/high-score presentation helpers
 ├── TunnelPath.h / .cpp       # world-z tunnel center, radius, and curve samples
 ├── InputAction.h             # shared abstract input action enum
 ├── InputManager.h / .cpp     # action aggregation and input state
@@ -309,6 +310,7 @@ src/
 - [x] Move XInput runtime loading and polling into `XInputControllerBackend`.
 - [x] Move keyboard key-to-action mapping into `KeyboardActionMap`.
 - [x] Move the shared `Action` enum into `InputAction.h`.
+- [x] Move pure high-score HUD drawing into `HudRenderer`.
 - Tune dead zone and sensitivity.
 
 ### 7. Polish for Live Use

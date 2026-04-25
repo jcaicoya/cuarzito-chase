@@ -74,6 +74,7 @@ Important files:
 | `src/GameWidget.*` | `QOpenGLWidget`, forwards keyboard events, owns timer, cave renderer, and aspect fit. |
 | `src/CaveRenderer.*` | Draws dark faceted cave, space, stars, Polaris, aurora, floor glow, wall proximity glow. |
 | `src/GameScene.*` | Game state, entities, projection, updates, drawing. |
+| `src/HudRenderer.*` | Stateless HUD/high-score presentation helpers used by `GameScene`. |
 | `src/TunnelPath.*` | Provides deterministic tunnel center/radius samples by world `z` for the chase redesign. |
 | `src/AudioManager.*` | Generates cue tones and a subtle ambient loop, then plays them through `QSoundEffect`. |
 | `src/InputAction.h` | Shared abstract input action enum used by input backends and game code. |

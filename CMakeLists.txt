@@ -26,6 +26,7 @@ add_executable(cuarzito-race
     src/GameScene.cpp
     src/AudioManager.cpp
     src/HighScoreManager.cpp
+    src/HudRenderer.cpp
     src/InputManager.cpp
     src/KeyboardActionMap.cpp
     src/SdlControllerBackend.cpp
