@@ -195,7 +195,6 @@ private:
     float m_gameOverTimer   = 0.f;
     float m_gameOverIdleTimer = 0.f;
     float m_introTimer      = 0.f;
-    float m_countdownTimer  = 0.f;
     float m_energy         = 100.f;
     float m_cleanFlightTime = 0.f;
     float m_revealTimer     = 0.f;

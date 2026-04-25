@@ -1131,7 +1131,6 @@ void GameScene::startGame()
     m_gameOverTimer   = 0.f;
     m_gameOverIdleTimer = 0.f;
     m_introTimer      = 0.f;
-    m_countdownTimer  = 0.f;
     m_energy         = 100.f;
     m_cleanFlightTime = 0.f;
     m_revealTimer     = 0.f;
@@ -1187,7 +1186,6 @@ void GameScene::startAttract()
     m_gameOverTimer   = 0.f;
     m_gameOverIdleTimer = 0.f;
     m_introTimer      = 0.f;
-    m_countdownTimer  = 0.f;
     m_energy         = 100.f;
     m_cleanFlightTime = 0.f;
     m_revealTimer     = 0.f;
@@ -1230,7 +1228,6 @@ void GameScene::startIntro()
     m_gameOverTimer   = 0.f;
     m_gameOverIdleTimer = 0.f;
     m_introTimer      = 4.2f;
-    m_countdownTimer  = 0.f;
     m_energy         = 100.f;
     m_cleanFlightTime = 0.f;
     m_introAnimT      = 0.f;
