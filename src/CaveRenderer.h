@@ -26,6 +26,7 @@ public:
         float playerOffYNorm = 0.f;  // -1 = near ceiling, +1 = near floor
         float playerOffXNorm = 0.f;  // -1 = near left wall, +1 = near right wall
         Mode mode = Mode::OpenMouth;
+        bool showGuides = true;
     };
 
     CaveRenderer();

@@ -280,7 +280,7 @@ void CaveRenderer::drawCave(QPainter *painter, const Frame &frame) const
     //     The facets make the cave feel rocky; these thin contour/ridge lines
     //     make the tunnel direction readable at speed, especially in curves.
     // -----------------------------------------------------------------------
-    if (enclosed && rings.size() > 4) {
+    if (enclosed && frame.showGuides && rings.size() > 4) {
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing);
 
@@ -341,20 +341,21 @@ void CaveRenderer::drawCave(QPainter *painter, const Frame &frame) const
     }
 
     // -----------------------------------------------------------------------
-    // 4. Far end cap — fills the farthest ring so stars never bleed through.
-    //    Kept opaque enough to prevent open-space bleed but slightly translucent
-    //    so it doesn't read as a hard wall.
+    // 4. Far end cap — open-mouth only: seals the tunnel so stars don't bleed
+    //    through the back. In enclosed mode the rock facets cover everything
+    //    and there are no stars to bleed, so no cap is needed.
     // -----------------------------------------------------------------------
-    const RingDesc &farEnd = rings.last();
-    const float horizonScale = enclosed ? 0.52f : 1.f;
-    const QList<QPointF> endPts = caveRing(farEnd.center,
-                                            farEnd.halfW * horizonScale,
-                                            farEnd.halfH * horizonScale,
-                                            farEnd.phase,
-                                            farEnd.roughness + 0.04f);
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(enclosed ? QColor(1, 2, 5, 218) : QColor(2, 3, 7, 200));
-    painter->drawPath(polygonPath(endPts));
+    if (!enclosed) {
+        const RingDesc &farEnd = rings.last();
+        const QList<QPointF> endPts = caveRing(farEnd.center,
+                                                farEnd.halfW,
+                                                farEnd.halfH,
+                                                farEnd.phase,
+                                                farEnd.roughness + 0.04f);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(2, 3, 7, 200));
+        painter->drawPath(polygonPath(endPts));
+    }
 
     // -----------------------------------------------------------------------
     // 5. Turn-direction wall highlight.

@@ -27,6 +27,7 @@ private slots:
 private:
     CaveRenderer m_caveRenderer;
     GameScene *m_scene = nullptr;
+    bool m_showGuides = true;
     QTimer m_timer;
     QElapsedTimer m_clock;
     qint64 m_lastMs = 0;

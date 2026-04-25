@@ -65,7 +65,8 @@ void GameWidget::paintGL()
         m_scene->tunnelZ(),
         m_scene->playerOffYNorm(),
         m_scene->playerOffXNorm(),
-        m_scene->caveMode()
+        m_scene->caveMode(),
+        m_showGuides
     });
     m_scene->render(&painter);
 }
@@ -98,6 +99,10 @@ void GameWidget::keyPressEvent(QKeyEvent *event)
     }
     if (event->key() == Qt::Key_I) {
         m_scene->toggleInvulnerability();
+        return;
+    }
+    if (event->key() == Qt::Key_G) {
+        m_showGuides = !m_showGuides;
         return;
     }
     if (event->key() == Qt::Key_F1) {
