@@ -20,7 +20,7 @@ bool HighScoreManager::qualifies(int score) const
 {
     if (score <= 0)
         return false;
-    return m_entries.size() < 10 || score > m_entries.last().score;
+    return m_entries.size() < kMaxScoreEntries || score > m_entries.last().score;
 }
 
 void HighScoreManager::addScore(const QString &name, int score)
@@ -29,7 +29,7 @@ void HighScoreManager::addScore(const QString &name, int score)
         return;
 
     Entry entry;
-    entry.name = name.left(3).toUpper();
+    entry.name = name.left(kMaxNameLength).toUpper();
     if (entry.name.trimmed().isEmpty())
         entry.name = "QTZ";
     entry.score = score;
@@ -56,7 +56,7 @@ void HighScoreManager::load()
     for (const QJsonValue &value : array) {
         const QJsonObject obj = value.toObject();
         Entry entry;
-        entry.name = obj.value("name").toString("QTZ").left(3).toUpper();
+        entry.name = obj.value("name").toString("QTZ").left(kMaxNameLength).toUpper();
         entry.score = obj.value("score").toInt();
         if (entry.score > 0)
             m_entries.append(entry);
@@ -101,6 +101,6 @@ void HighScoreManager::sortAndTrim()
         return a.score > b.score;
     });
 
-    while (m_entries.size() > 10)
+    while (m_entries.size() > kMaxScoreEntries)
         m_entries.removeLast();
 }

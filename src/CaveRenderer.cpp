@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #include "CaveRenderer.h"
+#include "GameConstants.h"
 
 #include <QLinearGradient>
 #include <QPainter>
@@ -10,8 +11,8 @@
 
 CaveRenderer::CaveRenderer()
 {
-    constexpr float w = 1280.f;
-    constexpr float h = 720.f;
+    constexpr float w = kLogicalW;
+    constexpr float h = kLogicalH;
 
     for (int i = 0; i < 130; ++i) {
         const float a = i * 12.9898f;
@@ -93,7 +94,7 @@ void CaveRenderer::drawCave(QPainter *painter, const Frame &frame) const
     const bool    enclosed = frame.mode == Mode::EnclosedTunnel;
 
     // Projection constants — must match GameScene::FOCAL and TunnelPath world scale.
-    constexpr float FOCAL        = 400.f;
+    constexpr float FOCAL        = kFocal;
     constexpr float TUNNEL_R     = 155.f;   // world-space tunnel radius
     constexpr float ASPECT_Y     = 0.62f;   // vertical compression (cave is wider than tall)
     constexpr float RING_SPACING = 80.f;    // world units between ring cross-sections
@@ -102,7 +103,7 @@ void CaveRenderer::drawCave(QPainter *painter, const Frame &frame) const
 
     // Curve and vertical-occlusion data — used for per-ring center offsets in
     // enclosed mode and for the atmospheric caps drawn later.
-    const QPointF farShift  = vp - QPointF(640.f, 360.f);
+    const QPointF farShift  = vp - QPointF(kLogicalCX, kLogicalCY);
     const float vOccSigned  = frame.verticalOcclusion;
     const float vOcc        = std::abs(vOccSigned);
     const float vDir        = vOccSigned < 0.f ? -1.f : 1.f;
@@ -284,8 +285,8 @@ void CaveRenderer::drawCave(QPainter *painter, const Frame &frame) const
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing);
 
-        const float vpOffX = static_cast<float>(vp.x()) - 640.f;
-        const float vpOffY = static_cast<float>(vp.y()) - 360.f;
+        const float vpOffX = static_cast<float>(vp.x()) - kLogicalCX;
+        const float vpOffY = static_cast<float>(vp.y()) - kLogicalCY;
         const float turnCue = qBound(0.f,
             static_cast<float>(std::hypot(vpOffX / 220.f, vpOffY / 150.f)),
             1.f);
@@ -364,25 +365,25 @@ void CaveRenderer::drawCave(QPainter *painter, const Frame &frame) const
     //    amber gradient, giving the player an instinctive directional cue.
     // -----------------------------------------------------------------------
     if (enclosed) {
-        const float vpOffX = static_cast<float>(vp.x()) - 640.f;
-        const float vpOffY = static_cast<float>(vp.y()) - 360.f;
+        const float vpOffX = static_cast<float>(vp.x()) - kLogicalCX;
+        const float vpOffY = static_cast<float>(vp.y()) - kLogicalCY;
         const float hAmt   = qBound(-1.f, vpOffX / 200.f, 1.f);
         const float vAmt   = qBound(-1.f, vpOffY / 140.f, 1.f);
 
         if (std::abs(hAmt) > 0.08f) {
             // Amber glow on the OUTER wall (opposite side from VP displacement)
             // VP moves right → tunnel bends right → outer wall is LEFT
-            const float gx0 = hAmt > 0.f ? 0.f : 1280.f;
+            const float gx0 = hAmt > 0.f ? 0.f : kLogicalW;
             const int   alpha = static_cast<int>(std::abs(hAmt) * 52.f);
-            QLinearGradient hGrad(gx0, 360.f, 640.f, 360.f);
+            QLinearGradient hGrad(gx0, kLogicalCY, kLogicalCX, kLogicalCY);
             hGrad.setColorAt(0.0, QColor(200, 120, 30, alpha));
             hGrad.setColorAt(1.0, QColor(0, 0, 0, 0));
             painter->fillPath(wallMask, QBrush(hGrad));
         }
         if (std::abs(vAmt) > 0.08f) {
-            const float gy0 = vAmt > 0.f ? 0.f : 720.f;
+            const float gy0 = vAmt > 0.f ? 0.f : kLogicalH;
             const int   alpha = static_cast<int>(std::abs(vAmt) * 42.f);
-            QLinearGradient vGrad(640.f, gy0, 640.f, 360.f);
+            QLinearGradient vGrad(kLogicalCX, gy0, kLogicalCX, kLogicalCY);
             vGrad.setColorAt(0.0, QColor(200, 120, 30, alpha));
             vGrad.setColorAt(1.0, QColor(0, 0, 0, 0));
             painter->fillPath(wallMask, QBrush(vGrad));
@@ -397,7 +398,7 @@ void CaveRenderer::drawFloorGlow(QPainter *painter, const Frame &frame) const
     const float speedBoost = std::min(std::max(0.f, (frame.worldSpeed - 135.f) / 365.f), 1.f);
     // yBoost: near-floor brightens the glow; near-ceiling dims it
     const float yBoost = frame.playerOffYNorm;   // -1 ceiling … +1 floor
-    const float tunnelV = qBound(-1.f, static_cast<float>(vp.y() - 360.f) / 145.f, 1.f);
+    const float tunnelV = qBound(-1.f, static_cast<float>(vp.y() - kLogicalCY) / 145.f, 1.f);
 
     const float baseAlpha  = 55.f + speedBoost * 95.f + yBoost * 55.f
                            + qMax(0.f, -tunnelV) * 34.f;
@@ -415,13 +416,13 @@ void CaveRenderer::drawFloorGlow(QPainter *painter, const Frame &frame) const
     // Uphill: the floor should feel like it rises toward the player.
     const float uphillAmt = qMax(0.f, -tunnelV);
     if (uphillAmt > 0.001f) {
-        QLinearGradient floorRise(0.f, vp.y() + 110.f, 0.f, 720.f);
+        QLinearGradient floorRise(0.f, vp.y() + 110.f, 0.f, kLogicalH);
         floorRise.setColorAt(0.0, QColor(0, 0, 0, 0));
         floorRise.setColorAt(0.38, QColor(18, 54, 66, static_cast<int>(uphillAmt * 52.f)));
         floorRise.setColorAt(0.78, QColor(8, 20, 28, static_cast<int>(uphillAmt * 108.f)));
         floorRise.setColorAt(1.0, QColor(2, 5, 10, static_cast<int>(uphillAmt * 156.f)));
         painter->setBrush(floorRise);
-        painter->drawRect(QRectF(0.f, vp.y() + 92.f, 1280.f, 720.f - (vp.y() + 92.f)));
+        painter->drawRect(QRectF(0.f, vp.y() + 92.f, kLogicalW, kLogicalH - (vp.y() + 92.f)));
     }
 
     // Ceiling proximity vignette — dark gradient creeping down from the top
@@ -433,7 +434,7 @@ void CaveRenderer::drawFloorGlow(QPainter *painter, const Frame &frame) const
         ceilGrad.setColorAt(0.0, QColor(8, 18, 32, static_cast<int>(ceilAmt * 160.f)));
         ceilGrad.setColorAt(1.0, QColor(0, 0, 0, 0));
         painter->setBrush(ceilGrad);
-        painter->drawRect(QRectF(0.f, 0.f, 1280.f, 260.f));
+        painter->drawRect(QRectF(0.f, 0.f, kLogicalW, 260.f));
     }
     if (downhillAmt > 0.001f) {
         QLinearGradient ceilingDrop(0.f, 0.f, 0.f, 300.f + downhillAmt * 120.f);
@@ -441,15 +442,15 @@ void CaveRenderer::drawFloorGlow(QPainter *painter, const Frame &frame) const
         ceilingDrop.setColorAt(0.38, QColor(8, 18, 28, static_cast<int>(downhillAmt * 110.f)));
         ceilingDrop.setColorAt(1.0, QColor(0, 0, 0, 0));
         painter->setBrush(ceilingDrop);
-        painter->drawRect(QRectF(0.f, 0.f, 1280.f, 320.f + downhillAmt * 120.f));
+        painter->drawRect(QRectF(0.f, 0.f, kLogicalW, 320.f + downhillAmt * 120.f));
     }
 
-    QLinearGradient floorPlane(0.f, vp.y() + 180.f, 0.f, 720.f);
+    QLinearGradient floorPlane(0.f, vp.y() + 180.f, 0.f, kLogicalH);
     floorPlane.setColorAt(0.0, QColor(0, 0, 0, 0));
     floorPlane.setColorAt(0.55, QColor(12, 26, 35, 105));
     floorPlane.setColorAt(1.0, QColor(2, 3, 8, 185));
     painter->setBrush(floorPlane);
-    painter->drawRect(QRectF(0.f, vp.y() + 160.f, 1280.f, 560.f));
+    painter->drawRect(QRectF(0.f, vp.y() + 160.f, kLogicalW, 560.f));
 }
 
 QList<QPointF> CaveRenderer::caveRing(const QPointF &vp, float halfW, float halfH,

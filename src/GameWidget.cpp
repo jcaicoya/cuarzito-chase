@@ -1,5 +1,6 @@
 #include "GameWidget.h"
 
+#include "GameConstants.h"
 #include "GameLaunchOptions.h"
 #include "GameScene.h"
 
@@ -15,7 +16,7 @@ GameWidget::GameWidget(const GameLaunchOptions &options, QWidget *parent) : QOpe
 
     m_clock.start();
     connect(&m_timer, &QTimer::timeout, this, &GameWidget::tick);
-    m_timer.start(16);
+    m_timer.start(kFrameIntervalMs);
 }
 
 GameWidget::~GameWidget() = default;
@@ -34,8 +35,8 @@ void GameWidget::paintGL()
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
-    constexpr float logicalW = 1280.f;
-    constexpr float logicalH = 720.f;
+    constexpr float logicalW = kLogicalW;
+    constexpr float logicalH = kLogicalH;
     const float sx = width() / logicalW;
     const float sy = height() / logicalH;
     // Preserve the full authored frame. On ultrawide displays this adds
@@ -124,7 +125,7 @@ void GameWidget::tick()
     const qint64 now = m_clock.elapsed();
     float dt = static_cast<float>(now - m_lastMs) / 1000.f;
     m_lastMs = now;
-    dt = qMin(dt, 0.05f);
+    dt = qMin(dt, kMaxDeltaTime);
 
     m_scene->update(dt);
     update();

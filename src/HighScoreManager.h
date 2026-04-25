@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameConstants.h"
 #include <QList>
 #include <QString>
 

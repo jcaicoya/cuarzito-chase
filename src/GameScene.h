@@ -6,6 +6,7 @@
 #include <QString>
 #include "AudioManager.h"
 #include "CaveRenderer.h"
+#include "GameConstants.h"
 #include "GameLaunchOptions.h"
 #include "HighScoreManager.h"
 #include "InputManager.h"
@@ -44,11 +45,11 @@ private:
     // ---------------------------------------------------------------
     // Scene constants
     // ---------------------------------------------------------------
-    static constexpr float SCENE_W = 1280.f;
-    static constexpr float SCENE_H = 720.f;
-    static constexpr float CX      = SCENE_W / 2.f;   // screen center X
-    static constexpr float CY      = SCENE_H / 2.f;   // screen center Y
-    static constexpr float FOCAL            = 400.f;
+    static constexpr float SCENE_W = kLogicalW;
+    static constexpr float SCENE_H = kLogicalH;
+    static constexpr float CX      = kLogicalCX;
+    static constexpr float CY      = kLogicalCY;
+    static constexpr float FOCAL   = kFocal;
     // Virtual depth at which Cuarzito is drawn in third-person.
     // Chosen so his physics boundary (safeY≈104) projects to within 16px of
     // the visible tunnel ring boundary at that depth — wall contact looks real.
