@@ -45,7 +45,8 @@ Implemented now:
 - Chase gameplay around world `z`, tunnel path samples, acceleration/braking, energy loss on crashes, and per-track gem pacing.
 - Scoring, HUD, score popups, burst effects, stars.
 - Procedural placeholder Cuarzito.
-- Dedicated `CaveRenderer` with a QPainter-based streaming faceted tunnel.
+- Dedicated `CaveRenderer` with a QPainter-based streaming faceted tunnel. Both attract/intro and gameplay use the same irregular cave-ring renderer. In gameplay (enclosed) mode, each ring gets a per-ring projected center that shifts along the VP direction proportional to depth, creating the "tunnel curves ahead" illusion. Vertical occlusion on uphills/downhills is handled geometrically by shifting ring centers and shrinking ring sizes — no overlay ellipses.
+- `G` toggles guide mode: ON shows route-reading contour and ridge lines drawn over the cave walls; OFF (default) hides them and fully seals the far end so walls are completely opaque.
 - Track data loaded from `resources/tracks/demo_tunnel.json` and `resources/tracks/live_tunnel.json` through Qt resources.
 - R restarts the current run immediately for testing.
 - Fullscreen now uses fit scaling so the full 1280x720 authored frame remains visible on ultrawide displays.
@@ -97,26 +98,28 @@ This is the current resume point.
   - `TrackComplete`
   - `AllGemsCaptured`
   - `OutOfEnergy`
-- Vertical horizon hiding for uphill/downhill now works by deforming the enclosed far box-stack directly, which is the part of the renderer that actually creates the visible black opening in gameplay
-- The last visible size pop near center was fixed by making the enclosed far-box deformation proportional to `verticalOcclusion`, with no fixed step term
-- Temporary red/cyan horizon debug markers were removed after verification
+- Uphill/downhill horizon hiding works via per-ring center and size deformation in `CaveRenderer::drawCave()`. Far ring centers shift up/down (`vDir * farWeight * vOcc * 86`) and shrink (`halfW *= 1 - farWeight * vOcc * 0.24`). The old overlay ellipses (occlusion caps) have been removed.
+- The cave renderer is now unified: both `OpenMouth` (attract/intro) and `EnclosedTunnel` (gameplay) use the same irregular faceted ring path. The rectangular box-tunnel branch has been deleted.
 
 Still intentionally true:
 
 - curve inertia is still forced off for now
 - the safe-zone debug rectangle remains visible during gameplay
 - invulnerability is enabled by default at run start for current testing/demo use
+- guide mode (`G`) defaults to ON (shows route-reading lines and small far-end opening)
 
 ## Tunnel Renderer — How It Works
 
-`CaveRenderer::drawCave()` uses a **streaming ring system** driven by `frame.playerZ`:
+`CaveRenderer::drawCave()` uses a **unified streaming ring system** driven by `frame.playerZ`. Both modes (`OpenMouth` for attract/intro, `EnclosedTunnel` for gameplay) use the same irregular faceted cave rings.
 
-- 22 cross-section rings are placed at world-z intervals of 80 units ahead of the camera.
+- 22 rings (open-mouth) or 32 rings (enclosed) are placed at world-z intervals of 80 units ahead of the camera.
 - Each ring's projected screen size is `TUNNEL_R * FOCAL / relZ` (155 × 400 / depth).
-- A synthetic camera-plane ring is prepended so the nearest wall band extends past the viewport as rings cross the camera.
-- Each ring's irregular cave-wall shape is keyed to its **absolute world-z** (`phase = worldZ * 0.015 + time * 0.03`), so the same cave geometry looks consistent as you approach it.
-- Facet bands between adjacent rings are drawn far-to-near (painter's algorithm). The nearest band's outer ring extends off-screen; Qt clips it.
-- In enclosed gameplay mode, a full-canvas dark rock backing layer is painted behind the facets as a defensive fallback against near-plane gaps.
+- Each ring has a **per-ring projected center**. In open-mouth mode all rings converge to `vp`. In enclosed mode, far rings shift along `farShift = vp - screenCenter` with a power curve (`curveT = pow(depth01, 0.72)`), creating the "tunnel curves ahead" illusion.
+- Vertical occlusion (uphills/downhills) shifts ring centers up/down and shrinks `halfW` proportionally to depth — purely geometric, no overlay ellipses.
+- Each ring's irregular cave-wall shape (`caveRing()`, 18-point polygon with sine-wave noise) is keyed to its **absolute world-z**, so the same cave geometry looks consistent as you approach it.
+- Facet bands between adjacent rings are drawn far-to-near (painter's algorithm).
+- In enclosed mode, a full-canvas dark rock backing layer is painted as a defensive fallback against near-plane gaps.
+- The far end cap is only drawn in open-mouth mode (to prevent star bleed-through). In enclosed mode the facets seal everything.
 - `frame.playerZ` is `m_player.z` during gameplay and a gentle 80 units/s drift in all other states.
 - `m_tunnelZ` in `GameScene` carries this value across all states and is exposed as `tunnelZ()`.
 
@@ -127,7 +130,7 @@ Key constants in `CaveRenderer::drawCave()`:
 | `TUNNEL_R` | 155 | World-space tunnel radius |
 | `FOCAL` | 400 | Must match `GameScene::FOCAL` |
 | `RING_SPACING` | 80 | World units between rings; keep ≤ 97 so rings[0] always fills the screen |
-| `NUM_RINGS` | 22 | Rings ahead of camera |
+| `NUM_RINGS` | 22 | Base ring count; enclosed mode uses +10 extra for full coverage at speed |
 | `NEAR_CLIP` | 1 | Only drops rings exactly at the camera plane |
 | synthetic camera ring | screen-cover polygon | Prevents near-camera prism gaps when rings cross the camera plane |
 
@@ -434,12 +437,13 @@ enum class GameState {
 
 Resume with the next gameplay and visual pass:
 
-- Retune route-driven drift and gem pacing now that the control model and horizon hiding are in a usable state.
-- Then iterate first-person mode (currently functional but not tuned): feel, gem visibility, HUD adaptation.
+- Tune the cave look in gameplay: facet brightness, roughness, color palette — now that the unified renderer is in place the visual can be iterated freely.
+- Decide on final guide-mode default (currently ON) and whether to expose it in the HUD.
+- Retune route-driven drift and gem pacing.
+- Iterate first-person mode (currently functional but not tuned): feel, gem visibility, HUD adaptation.
 - Polish the three end-sequence variants further.
 - Build a GUI editor for the tunnel JSON format.
 - Add obstacles inside the tunnel.
-- Improve the tunnel appearance: richer facets, better depth, stronger cave identity.
 - Add proper sound and music beyond the current generated tones/ambient loop.
 - Design and iterate on additional full tracks beyond `demo_tunnel` and `live_tunnel`.
 

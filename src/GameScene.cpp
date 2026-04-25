@@ -1572,8 +1572,28 @@ void GameScene::drawHUD(QPainter *painter) const
 
     if (m_state == GameState::HighScoreEntry)
         drawHighScoreEntry(painter);
-    else if (m_state == GameState::Attract)
+    else if (m_state == GameState::Attract) {
         drawTopScores(painter, SCENE_W - 360.f, 76.f, 5);
+
+        // Toggle key legend — bottom-left corner
+        static const struct { const char *key; const char *desc; } keys[] = {
+            { "V",   "VIEW MODE" },
+            { "G",   "GUIDES"   },
+            { "I",   "INVULNERABILITY" },
+            { "F11", "FULLSCREEN" },
+        };
+        QFont legendFont("Courier New", 13);
+        painter->setFont(legendFont);
+        const float lx  = 22.f;
+        const float ly0 = SCENE_H - 14.f - 4 * 22.f;
+        for (int i = 0; i < 4; ++i) {
+            const float ly = ly0 + i * 22.f;
+            painter->setPen(QColor(80, 210, 160));
+            painter->drawText(QPointF(lx, ly), QString(keys[i].key));
+            painter->setPen(QColor(60, 130, 100));
+            painter->drawText(QPointF(lx + 46.f, ly), QString(keys[i].desc));
+        }
+    }
     else if (m_state == GameState::GameOver)
         drawTopScores(painter, SCENE_W - 360.f, 76.f, 5);
 
