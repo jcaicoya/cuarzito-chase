@@ -1,0 +1,11 @@
+{
+  "releases": [
+    {
+      "version": 0,
+      "commit": "eb54174",
+      "date": "2026-05-15T20:45:55",
+      "message": "Refine contact cue and align race naming",
+      "zip": "bajo-ataque-under_attack_cuarzito_race-v00.zip"
+    }
+  ]
+}
