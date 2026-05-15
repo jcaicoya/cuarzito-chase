@@ -61,9 +61,9 @@ Still intentionally true:
 - the safe-zone rectangle is still drawn during gameplay for debugging
 - curve inertia is still intentionally set to `0.0`
 - CLI test mode still exists:
-  - `cuarzito-race.exe --test downhill`
-  - `cuarzito-race.exe --test uphill`
-  - `cuarzito-race.exe --test vertical`
+  - `under_attack_cuarzito_race.exe --test downhill`
+  - `under_attack_cuarzito_race.exe --test uphill`
+  - `under_attack_cuarzito_race.exe --test vertical`
 
 ## Visual References
 
@@ -177,7 +177,7 @@ Qt 6.7.3 is enough for the next stage. Moving to another Qt version is acceptabl
 Current files:
 
 ```text
-preshow-game/
+cuarzito_race/
 ├── CMakeLists.txt
 ├── README.md
 ├── CLAUDE.md
@@ -326,6 +326,11 @@ src/
 
 - [ ] Improve what can be seen at the end of the tunnel so the player can read the route without losing the enclosed cave feeling.
 - [ ] Make left/right/up/down turns visible directly on the walls, ceiling, and floor; current turns are not pronounced enough.
+- [x] Add a projected green-shadow Cuarzito contact cue that wraps across the wall/floor/ceiling surface before impact.
+- [ ] Move the safe-zone rectangle behind a debug/dev toggle once proximity cues are reliable.
+- [ ] Tune horizontal collision/readability after playtesting the new contact cue.
+- [ ] Improve Cuarzito's flying feel with speed-reactive bob, cloak trailing, and subtle wake effects.
+- [ ] Strengthen wall-contact response with surface-specific scrape flashes, pushback, and sparks.
 - [ ] Restore and retune curve inertia after the current route-driven control model is fully signed off. It is intentionally set to zero right now.
 - [ ] Add stronger acceleration and braking feel: speed lines, tunnel pulse, FOV/projection response, engine/air sound, or equivalent feedback.
 - [ ] Simplify/tune the 3D cube mini-map so left/right/up/down track motion is readable without clutter.
@@ -350,7 +355,7 @@ src/
 | Fullscreen toggle | F11 | Optional |
 | Quit development build | Escape | Optional |
 
-DualSense note: PlayStation controllers usually do not expose themselves as XInput devices. For the show controller, place `SDL3.dll` beside `cuarzito-race.exe` or make it available on `PATH`; the game will load it dynamically through `SdlControllerBackend` and use SDL's controller mapping when present.
+DualSense note: PlayStation controllers usually do not expose themselves as XInput devices. For the show controller, place `SDL3.dll` beside `under_attack_cuarzito_race.exe` or make it available on `PATH`; the game will load it dynamically through `SdlControllerBackend` and use SDL's controller mapping when present.
 
 Keep keyboard as the reliable fallback for live-event use. Gamepad diagnostics are available through `InputManager::gamepadDiagnostics()` and include SDL3/XInput DLL load status plus detected controller names/IDs where available.
 
@@ -365,7 +370,7 @@ C:/Qt/6.7.3/msvc2022_64
 Current target:
 
 ```text
-cuarzito-race
+under_attack_cuarzito_race
 ```
 
 The OpenGL refactor will require:
@@ -373,7 +378,7 @@ The OpenGL refactor will require:
 ```cmake
 find_package(Qt6 COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets REQUIRED)
 
-target_link_libraries(cuarzito-race
+target_link_libraries(under_attack_cuarzito_race
     Qt::Core
     Qt::Gui
     Qt::Widgets

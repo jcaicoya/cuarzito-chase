@@ -75,6 +75,9 @@ void GameScene::render(QPainter *painter)
     if (m_state == GameState::Playing)
         drawSafeZone(painter);
 
+    if (m_state == GameState::Playing && m_viewMode == ViewMode::ThirdPerson)
+        drawPlayerSurfaceShadow(painter);
+
     if (m_state != GameState::Attract && m_viewMode == ViewMode::ThirdPerson)
         drawPlayer(painter);
 
@@ -576,6 +579,149 @@ void GameScene::drawSafeZone(QPainter *painter) const
 
     painter->restore();
 }
+
+void GameScene::drawPlayerSurfaceShadow(QPainter *painter) const
+{
+    const TunnelPath::Sample sample = m_tunnelPath.sample(m_player.z);
+    const float scale = FOCAL / PLAYER_DRAW_DEPTH;
+    const float safeX = sample.innerRadius * kSafeXFactor * scale;
+    const float safeY = sample.innerRadius * kSafeYFactor * scale;
+    if (safeX <= 1.f || safeY <= 1.f)
+        return;
+
+    const float anchorY = m_vpY + 30.f;
+    const float nx = qBound(-1.2f, (m_player.offX * scale) / safeX, 1.2f);
+    const float ny = qBound(-1.2f, (m_player.offY * scale) / safeY, 1.2f);
+    const float leftProx = qBound(0.f, (-nx - 0.52f) / 0.48f, 1.f);
+    const float rightProx = qBound(0.f, (nx - 0.52f) / 0.48f, 1.f);
+    const float ceilingProx = qBound(0.f, (-ny - 0.52f) / 0.48f, 1.f);
+    const float floorProx = qBound(0.f, (ny - 0.52f) / 0.48f, 1.f);
+    const float strongest = qMax(qMax(leftProx, rightProx), qMax(ceilingProx, floorProx));
+    if (strongest <= 0.01f)
+        return;
+
+    const QPointF playerCenter = playerDrawCenter();
+    const float contactBoost = m_player.wallContact ? 1.f : 0.f;
+    const QRectF safeRect(m_vpX - safeX, anchorY - safeY, safeX * 2.f, safeY * 2.f);
+
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->setPen(Qt::NoPen);
+    painter->setClipRect(safeRect.adjusted(-150.f, -130.f, 150.f, 130.f));
+
+    auto rough = [](float seed) {
+        return std::sin(seed * 12.9898f) * 0.5f + std::sin(seed * 4.1414f) * 0.5f;
+    };
+
+    auto drawPatch = [&](float prox, bool verticalWall, float side) {
+        if (prox <= 0.01f)
+            return;
+
+        const float pulse = 0.85f + 0.15f * std::sin(m_time * 18.f + side * 1.7f);
+        const float intensity = qBound(0.f, prox * pulse + contactBoost * 0.22f, 1.25f);
+        const float edgeX = m_vpX + side * safeX;
+        const float edgeY = anchorY + side * safeY;
+        const float span = verticalWall ? (130.f + prox * 165.f) : (160.f + prox * 220.f);
+        const float depth = verticalWall ? (34.f + prox * 92.f) : (30.f + prox * 82.f);
+        const int coreAlpha = static_cast<int>(qBound(0.f, 70.f + intensity * 150.f, 235.f));
+        const int skinAlpha = static_cast<int>(qBound(0.f, 35.f + intensity * 90.f, 170.f));
+        const int amberAlpha = static_cast<int>(contactBoost * (90.f + prox * 130.f));
+
+        QPainterPath patch;
+        if (verticalWall) {
+            const float y = qBound(safeRect.top() + 30.f, playerCenter.y(), safeRect.bottom() - 30.f);
+            const float inward = -side;
+            const QPointF contactCenter(playerCenter.x(), y);
+            const float halfSpan = span * 0.50f;
+            const float halfThickness = depth * (0.55f + prox * 0.22f);
+            const float frontThickness = halfThickness * 0.72f;
+            const float backThickness = halfThickness * (1.28f + prox * 0.32f);
+            const int steps = 6;
+
+            // One continuous rough mark on the side wall, centered on Cuarzito.
+            // The player sprite masks the middle, so the same surface reads on
+            // both sides of him instead of becoming two separate effects.
+            patch.moveTo(contactCenter + QPointF(inward * halfThickness * 0.12f, -halfSpan));
+            for (int i = 0; i <= steps; ++i) {
+                const float t = i / static_cast<float>(steps);
+                const float yy = y - halfSpan + span * t;
+                const float bulge = std::sin(t * static_cast<float>(M_PI));
+                const float jag = rough(t + side * 3.1f + m_player.z * 0.013f) * frontThickness * 0.18f;
+                patch.lineTo(contactCenter.x() + inward * (frontThickness * (0.76f + 0.22f * bulge) + jag), yy);
+            }
+            for (int i = steps; i >= 0; --i) {
+                const float t = i / static_cast<float>(steps);
+                const float yy = y - halfSpan + span * t;
+                const float bulge = std::sin(t * static_cast<float>(M_PI));
+                const float jag = rough(t + side * 7.4f + m_player.z * 0.018f) * backThickness * 0.20f;
+                patch.lineTo(contactCenter.x() - inward * (backThickness * (0.92f + 0.24f * bulge) + jag), yy);
+            }
+            patch.closeSubpath();
+
+            QRadialGradient grad(contactCenter, halfSpan * 0.78f);
+            grad.setColorAt(0.0, QColor(120, 255, 145, coreAlpha));
+            grad.setColorAt(0.42, QColor(42, 150, 82, skinAlpha));
+            grad.setColorAt(1.0, QColor(0, 0, 0, 0));
+            painter->setBrush(grad);
+            painter->drawPath(patch);
+
+            if (amberAlpha > 0) {
+                painter->setBrush(QColor(255, 160, 70, amberAlpha));
+                painter->drawRoundedRect(QRectF(contactCenter.x() - 5.f, y - span * 0.36f,
+                                                10.f, span * 0.72f).normalized(),
+                                         5.f, 5.f);
+            }
+        } else {
+            const float x = qBound(safeRect.left() + 36.f, playerCenter.x(), safeRect.right() - 36.f);
+            const float inward = -side;
+            const QPointF contactCenter(x, playerCenter.y());
+            const float halfSpan = span * 0.50f;
+            const float halfThickness = depth * (0.55f + prox * 0.22f);
+            const float frontThickness = halfThickness * 0.72f;
+            const float backThickness = halfThickness * (1.28f + prox * 0.32f);
+            const int steps = 7;
+
+            patch.moveTo(contactCenter + QPointF(-halfSpan, inward * halfThickness * 0.12f));
+            for (int i = 0; i <= steps; ++i) {
+                const float t = i / static_cast<float>(steps);
+                const float xx = x - span * 0.58f + span * t;
+                const float bulge = std::sin(t * static_cast<float>(M_PI));
+                const float jag = rough(t + side * 5.2f + m_player.z * 0.011f) * frontThickness * 0.18f;
+                patch.lineTo(xx, contactCenter.y() + inward * (frontThickness * (0.76f + 0.22f * bulge) + jag));
+            }
+            for (int i = steps; i >= 0; --i) {
+                const float t = i / static_cast<float>(steps);
+                const float xx = x - span * 0.58f + span * t;
+                const float bulge = std::sin(t * static_cast<float>(M_PI));
+                const float jag = rough(t + side * 11.3f + m_player.z * 0.019f) * backThickness * 0.20f;
+                patch.lineTo(xx, contactCenter.y() - inward * (backThickness * (0.92f + 0.24f * bulge) + jag));
+            }
+            patch.closeSubpath();
+
+            QRadialGradient grad(contactCenter, halfSpan * 0.78f);
+            grad.setColorAt(0.0, QColor(120, 255, 145, coreAlpha));
+            grad.setColorAt(0.44, QColor(42, 150, 82, skinAlpha));
+            grad.setColorAt(1.0, QColor(0, 0, 0, 0));
+            painter->setBrush(grad);
+            painter->drawPath(patch);
+
+            if (amberAlpha > 0) {
+                painter->setBrush(QColor(255, 160, 70, amberAlpha));
+                painter->drawRoundedRect(QRectF(x - span * 0.44f, contactCenter.y() - 5.f,
+                                                span * 0.88f, side * 8.f).normalized(),
+                                         5.f, 5.f);
+            }
+        }
+    };
+
+    drawPatch(leftProx, true, -1.f);
+    drawPatch(rightProx, true, 1.f);
+    drawPatch(ceilingProx, false, -1.f);
+    drawPatch(floorProx, false, 1.f);
+
+    painter->restore();
+}
+
 void GameScene::drawVisorReveal(QPainter *painter, float cx, float cy, float width, float height, float amount) const
 {
     const float pulse = std::sin((1.f - amount) * static_cast<float>(M_PI));

@@ -53,7 +53,7 @@ Implemented now:
 - Cuarzito's persistent aura is currently disabled for tunnel visibility.
 - Third-person / first-person view toggle with `V`. Third-person is default. First-person to be iterated later.
 - `I` toggles invulnerability. Crash visuals still play; score/speed penalties are skipped while invulnerable.
-- CLI test mode exists: `cuarzito-race.exe --test downhill|uphill|vertical`. It skips intro/countdown, loads a dedicated resource track, auto-starts in `Playing`, forces invulnerability, and exits when the test track ends.
+- CLI test mode exists: `under_attack_cuarzito_race.exe --test downhill|uphill|vertical`. It skips intro/countdown, loads a dedicated resource track, auto-starts in `Playing`, forces invulnerability, and exits when the test track ends.
 - CLI test mode writes trace lines to `stderr` so automated runs can be inspected from the console.
 - Speed-scaled crash feedback: impact flash, expanding shockwave, and camera shake all scale with player speed at time of wall contact.
 - Turn wall cue: outer wall of curves receives a subtle amber tint in `CaveRenderer` proportional to VP displacement.
@@ -444,8 +444,13 @@ enum class GameState {
 
 ## Immediate Next Step
 
-Resume with the next gameplay and visual pass:
+Resume with the next gameplay and visual pass focused on playability:
 
+- Add a projected green-shadow Cuarzito contact cue that wraps across the wall/floor/ceiling surface before impact. `[done]`
+- Move the safe-zone rectangle behind a debug/dev toggle once proximity cues are reliable.
+- Tune horizontal collision/readability after playtesting the new contact cue.
+- Improve Cuarzito's flying feel with speed-reactive bob, cloak trailing, and subtle wake effects.
+- Strengthen wall-contact response with surface-specific scrape flashes, pushback, and sparks.
 - Tune the cave look in gameplay: facet brightness, roughness, color palette — now that the unified renderer is in place the visual can be iterated freely.
 - Decide on final guide-mode default (currently ON) and whether to expose it in the HUD.
 - Retune route-driven drift and gem pacing.

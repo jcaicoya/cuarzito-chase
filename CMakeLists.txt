@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.2)
-project(cuarzito-race)
+project(under_attack_cuarzito_race)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_AUTOMOC ON)
@@ -17,7 +17,7 @@ find_package(Qt6 COMPONENTS
         Multimedia
         REQUIRED)
 
-add_executable(cuarzito-race
+add_executable(under_attack_cuarzito_race
     src/main.cpp
     src/MainWindow.cpp
     src/GameWidget.cpp
@@ -34,8 +34,8 @@ add_executable(cuarzito-race
     resources/resources.qrc
 )
 
-target_include_directories(cuarzito-race PRIVATE src)
-target_link_libraries(cuarzito-race
+target_include_directories(under_attack_cuarzito_race PRIVATE src)
+target_link_libraries(under_attack_cuarzito_race
         Qt::Core
         Qt::Gui
         Qt::Widgets

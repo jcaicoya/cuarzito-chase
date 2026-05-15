@@ -156,6 +156,7 @@ private:
     // ---------------------------------------------------------------
     void drawChaseGems(QPainter *p) const;
     void drawSafeZone(QPainter *p) const;
+    void drawPlayerSurfaceShadow(QPainter *p) const;
     void drawPlayer(QPainter *p) const;
     void drawVisorReveal(QPainter *p, float cx, float cy, float width, float height, float amount) const;
     void drawBursts(QPainter *p) const;
