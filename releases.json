@@ -27,6 +27,13 @@
       "date": "2026-05-16T14:14:24",
       "message": "Accept orchestrator launch flags in cuarzito race",
       "zip": "bajo-ataque-under_attack_cuarzito_race-v03.zip"
+    },
+    {
+      "version": 4,
+      "commit": "64ba466",
+      "date": "2026-05-16T17:37:07",
+      "message": "Store Qt release archives at dist root",
+      "zip": "cuarzito_race_v04.zip"
     }
   ]
 }
