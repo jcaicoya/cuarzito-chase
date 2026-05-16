@@ -6,6 +6,13 @@
       "date": "2026-05-15T20:45:55",
       "message": "Refine contact cue and align race naming",
       "zip": "bajo-ataque-under_attack_cuarzito_race-v00.zip"
+    },
+    {
+      "version": 1,
+      "commit": "d0cd05d",
+      "date": "2026-05-16T10:40:22",
+      "message": "Rename package-release.ps1 to package_release.ps1 (snake_case)",
+      "zip": "bajo-ataque-under_attack_cuarzito_race-v01.zip"
     }
   ]
 }
